@@ -40,8 +40,6 @@ homebrew_casks:
     homepage: "https://github.com/ginjigo/ginji"
     description: "Ultra-fast, zero-dependency API framework for Go"
     license: "MIT"
-    test: |
-      system "#{bin}/ginji --version"
 
 checksum:
   name_template: 'checksums.txt'
