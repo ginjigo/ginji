@@ -10,7 +10,7 @@ import (
 type ProjectOptions struct {
 	Name        string
 	Database    string // "None", "SQLite", "PostgreSQL", "MySQL"
-	ORM         string // "None", "GORM"
+	ORM         string // "None", "GORM", "sqlc", "ent"
 	Middlewares []string
 	Deployment  string // "None", "Docker"
 	Tests       bool
@@ -39,6 +39,16 @@ func generateProject(opts ProjectOptions) error {
 	// Create go.mod
 	goModContent := fmt.Sprintf("module %s\n\ngo 1.23.0\n", opts.Name)
 	if err := createFile(filepath.Join(opts.Name, "go.mod"), goModContent); err != nil {
+		return err
+	}
+
+	// Create handlers
+	if err := createHandlers(opts); err != nil {
+		return err
+	}
+
+	// Create models
+	if err := createModels(opts); err != nil {
 		return err
 	}
 
@@ -71,11 +81,42 @@ func generateProject(opts ProjectOptions) error {
 	return nil
 }
 
+func createHandlers(opts ProjectOptions) error {
+	content := fmt.Sprintf(`package handlers
+
+import (
+	"net/http"
+	"github.com/ginjigo/ginji"
+)
+
+func HelloHandler(c *ginji.Context) {
+	c.JSON(http.StatusOK, ginji.H{"message": "Welcome to %s!"})
+}
+
+func HealthCheck(c *ginji.Context) {
+	c.JSON(http.StatusOK, ginji.H{"status": "ok"})
+}
+`, opts.Name)
+	return createFile(filepath.Join(opts.Name, "internal", "handlers", "hello.go"), content)
+}
+
+func createModels(opts ProjectOptions) error {
+	content := `package models
+
+type User struct {
+	ID    int    ` + "`json:\"id\"`" + `
+	Name  string ` + "`json:\"name\"`" + `
+	Email string ` + "`json:\"email\"`" + `
+}
+`
+	return createFile(filepath.Join(opts.Name, "internal", "models", "user.go"), content)
+}
+
 func createMainGo(opts ProjectOptions) error {
 	imports := []string{
 		"fmt",
 		"github.com/ginjigo/ginji",
-		"net/http",
+		fmt.Sprintf("%s/internal/handlers", opts.Name),
 	}
 
 	if opts.Database != "None" {
@@ -109,9 +150,9 @@ func createMainGo(opts ProjectOptions) error {
 	}
 
 	// Routes
-	mainBody += "\tapp.Get(\"/\", func(c *ginji.Context) {\n"
-	mainBody += "\t\tc.JSON(http.StatusOK, ginji.H{\"message\": \"Welcome to " + opts.Name + "!\"})\n"
-	mainBody += "\t})\n\n"
+	mainBody += "\t// Routes\n"
+	mainBody += "\tapp.Get(\"/\", handlers.HelloHandler)\n"
+	mainBody += "\tapp.Get(\"/health\", handlers.HealthCheck)\n\n"
 
 	// Run
 	mainBody += "\tfmt.Println(\"Server running on :8080\")\n"
@@ -129,18 +170,50 @@ func createDatabaseGo(opts ProjectOptions) error {
 		content += "\t\"gorm.io/gorm\"\n"
 		if opts.Database == "SQLite" {
 			content += "\t\"gorm.io/driver/sqlite\"\n"
+		} else if opts.Database == "PostgreSQL" {
+			content += "\t\"gorm.io/driver/postgres\"\n"
+		} else if opts.Database == "MySQL" {
+			content += "\t\"gorm.io/driver/mysql\"\n"
 		}
-		// Add other drivers as needed
 		content += ")\n\n"
 		content += "var DB *gorm.DB\n\n"
 		content += "func Connect() {\n"
 		content += "\tvar err error\n"
 		if opts.Database == "SQLite" {
 			content += "\tDB, err = gorm.Open(sqlite.Open(\"app.db\"), &gorm.Config{})\n"
+		} else {
+			content += "\t// TODO: Configure connection string\n"
+			content += "\t// DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})\n"
 		}
 		content += "\tif err != nil {\n"
 		content += "\t\tpanic(\"failed to connect database\")\n"
 		content += "\t}\n"
+		content += "}\n"
+	} else if opts.ORM == "sqlc" {
+		content += "import (\n"
+		content += "\t\"database/sql\"\n"
+		content += "\t_ \"github.com/lib/pq\" // Example for Postgres\n"
+		content += ")\n\n"
+		content += "var DB *sql.DB\n\n"
+		content += "func Connect() {\n"
+		content += "\t// TODO: Initialize sqlc connection\n"
+		content += "\t// DB, err := sql.Open(\"postgres\", \"user=foo dbname=bar sslmode=disable\")\n"
+		content += "}\n"
+	} else if opts.ORM == "ent" {
+		content += "import (\n"
+		content += "\t\"context\"\n"
+		content += "\t\"log\"\n"
+		content += "\t// \"your_project/ent\" // Import your generated ent package\n"
+		content += ")\n\n"
+		content += "func Connect() {\n"
+		content += "\t// client, err := ent.Open(\"sqlite3\", \"file:ent?mode=memory&cache=shared&_fk=1\")\n"
+		content += "\t// if err != nil {\n"
+		content += "\t// \tlog.Fatalf(\"failed opening connection to sqlite: %v\", err)\n"
+		content += "\t// }\n"
+		content += "\t// defer client.Close()\n"
+		content += "\t// if err := client.Schema.Create(context.Background()); err != nil {\n"
+		content += "\t// \tlog.Fatalf(\"failed creating schema resources: %v\", err)\n"
+		content += "\t// }\n"
 		content += "}\n"
 	} else {
 		content += "func Connect() {\n"
@@ -178,13 +251,12 @@ import (
 	"net/http/httptest"
 	"testing"
 	"github.com/ginjigo/ginji"
+	"%s/internal/handlers"
 )
 
 func TestRootRoute(t *testing.T) {
 	app := ginji.New()
-	app.Get("/", func(c *ginji.Context) {
-		c.JSON(http.StatusOK, ginji.H{"message": "Welcome to %s!"})
-	})
+	app.Get("/", handlers.HelloHandler)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()

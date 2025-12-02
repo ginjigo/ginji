@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -100,8 +101,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.step++
 			} else if m.step == 5 {
 				// Generate Project
+				projectName := strings.TrimSpace(m.inputs[0].Value())
 				opts := ProjectOptions{
-					Name:        m.inputs[0].Value(),
+					Name:        projectName,
 					Database:    dbOptions[m.dbIndex],
 					ORM:         ormOptions[m.ormIndex],
 					Middlewares: getSelectedMiddlewares(m.mwIndices),
@@ -262,16 +264,17 @@ func (m model) View() string {
 		}
 	} else {
 		s = titleStyle.Render("Project Created Successfully!") + "\n\n"
-		s += fmt.Sprintf("cd %s\n", m.inputs[0].Value())
+		s += fmt.Sprintf("cd %s\n", strings.TrimSpace(m.inputs[0].Value()))
 		s += "go mod tidy\n"
-		s += "go run cmd/server/main.go\n"
+		s += "go run cmd/server/main.go\n\n"
+		s += helpStyle.Render("Press Enter to quit")
 	}
 
 	return s
 }
 
 var dbOptions = []string{"None", "SQLite", "PostgreSQL", "MySQL"}
-var ormOptions = []string{"None", "GORM"}
+var ormOptions = []string{"None", "GORM", "sqlc", "ent"}
 var mwOptions = []string{"Logger", "Recovery", "CORS"}
 var deployOptions = []string{"None", "Docker"}
 var testOptions = []string{"Yes", "No"}
