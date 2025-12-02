@@ -74,7 +74,7 @@ func generateProject(opts ProjectOptions) error {
 func createMainGo(opts ProjectOptions) error {
 	imports := []string{
 		"fmt",
-		"ginji/ginji",
+		"github.com/ginjigo/ginji/ginji",
 		"net/http",
 	}
 
@@ -152,7 +152,7 @@ func createDatabaseGo(opts ProjectOptions) error {
 }
 
 func createDockerfile(opts ProjectOptions) error {
-	content := fmt.Sprintf(`FROM golang:1.23-alpine
+	content := `FROM golang:1.23-alpine
 
 WORKDIR /app
 
@@ -166,7 +166,7 @@ RUN go build -o /server cmd/server/main.go
 EXPOSE 8080
 
 CMD [ "/server" ]
-`)
+`
 	return createFile(filepath.Join(opts.Name, "Dockerfile"), content)
 }
 
@@ -177,7 +177,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"ginji/ginji"
+	"github.com/ginjigo/ginji/ginji"
 )
 
 func TestRootRoute(t *testing.T) {

@@ -1,4 +1,4 @@
-module ginji
+module github.com/ginjigo/ginji
 
 go 1.24.0
 

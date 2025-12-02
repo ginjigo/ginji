@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"ginji/ginji"
 	"net/http"
 	"time"
+
+	"github.com/ginjigo/ginji/ginji"
 )
 
 func main() {
@@ -18,16 +19,16 @@ func main() {
 			HttpOnly: true,
 		}
 		c.SetCookie(cookie)
-		c.Text(http.StatusOK, "Cookie set!")
+		c.Text(ginji.StatusOK, "Cookie set!")
 	})
 
 	app.Get("/get", func(c *ginji.Context) {
 		cookie, err := c.Cookie("user")
 		if err != nil {
-			c.Text(http.StatusBadRequest, "Cookie not found")
+			c.Text(ginji.StatusBadRequest, "Cookie not found")
 			return
 		}
-		c.Text(http.StatusOK, "User: "+cookie.Value)
+		c.Text(ginji.StatusOK, "User: "+cookie.Value)
 	})
 
 	fmt.Println("Server running on :8083")

@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"ginji/ginji"
 	"net/http"
+
+	"github.com/ginjigo/ginji/ginji"
 )
 
 func main() {

@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"ginji/ginji"
-	"net/http"
+
+	"github.com/ginjigo/ginji/ginji"
 )
 
 type User struct {
@@ -23,19 +23,19 @@ func main() {
 	app.Post("/users", func(c *ginji.Context) {
 		var user User
 		if err := c.BindJSON(&user); err != nil {
-			c.JSON(http.StatusBadRequest, ginji.H{"error": err.Error()})
+			c.JSON(ginji.StatusBadRequest, ginji.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusCreated, user)
+		c.JSON(ginji.StatusCreated, user)
 	})
 
 	app.Get("/search", func(c *ginji.Context) {
 		var query SearchQuery
 		if err := c.BindQuery(&query); err != nil {
-			c.JSON(http.StatusBadRequest, ginji.H{"error": err.Error()})
+			c.JSON(ginji.StatusBadRequest, ginji.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, query)
+		c.JSON(ginji.StatusOK, query)
 	})
 
 	fmt.Println("Server running on :8082")

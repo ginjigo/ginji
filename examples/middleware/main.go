@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"ginji/ginji"
-	"net/http"
 	"time"
+
+	"github.com/ginjigo/ginji/ginji"
 )
 
 func main() {
@@ -29,12 +29,12 @@ func main() {
 	})
 
 	app.Get("/", func(c *ginji.Context) {
-		c.Text(http.StatusOK, "Hello Middleware! Check headers for X-Request-ID and Content-Encoding.")
+		c.Text(ginji.StatusOK, "Hello Middleware! Check headers for X-Request-ID and Content-Encoding.")
 	})
 
 	app.Get("/id", func(c *ginji.Context) {
 		id, _ := c.Get("request_id")
-		c.JSON(http.StatusOK, ginji.H{
+		c.JSON(ginji.StatusOK, ginji.H{
 			"request_id": id,
 		})
 	})

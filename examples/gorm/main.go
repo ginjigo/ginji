@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"ginji/ginji"
-	"net/http"
+
+	"github.com/ginjigo/ginji/ginji"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -44,12 +44,12 @@ func main() {
 
 		var user User
 		if err := c.BindJSON(&user); err != nil {
-			c.JSON(http.StatusBadRequest, ginji.H{"error": err.Error()})
+			c.JSON(ginji.StatusBadRequest, ginji.H{"error": err.Error()})
 			return
 		}
 
 		conn.Create(&user)
-		c.JSON(http.StatusCreated, user)
+		c.JSON(ginji.StatusCreated, user)
 	})
 
 	app.Get("/users", func(c *ginji.Context) {
@@ -58,7 +58,7 @@ func main() {
 
 		var users []User
 		conn.Find(&users)
-		c.JSON(http.StatusOK, users)
+		c.JSON(ginji.StatusOK, users)
 	})
 
 	app.Get("/users/:id", func(c *ginji.Context) {
@@ -68,10 +68,10 @@ func main() {
 
 		var user User
 		if result := conn.First(&user, id); result.Error != nil {
-			c.JSON(http.StatusNotFound, ginji.H{"error": "User not found"})
+			c.JSON(ginji.StatusNotFound, ginji.H{"error": "User not found"})
 			return
 		}
-		c.JSON(http.StatusOK, user)
+		c.JSON(ginji.StatusOK, user)
 	})
 
 	fmt.Println("Server is running on :3000")
