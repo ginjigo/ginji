@@ -153,7 +153,17 @@ func processTemplates(rootDir string, opts ProjectOptions) error {
 			return err
 		}
 
-		// Write back
-		return os.WriteFile(path, buf.Bytes(), info.Mode())
+		// Determine output path (remove .tmpl extension if present)
+		outPath := path
+		if strings.HasSuffix(path, ".tmpl") {
+			outPath = strings.TrimSuffix(path, ".tmpl")
+			// Remove the .tmpl file
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+		}
+
+		// Write back to the correct path
+		return os.WriteFile(outPath, buf.Bytes(), info.Mode())
 	})
 }
