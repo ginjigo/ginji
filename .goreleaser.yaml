@@ -30,13 +30,13 @@ archives:
       - goos: windows
         formats: [zip]
 
-brews:
+homebrew_casks:
   - name: ginji
     repository:
       owner: ginjigo
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
-    directory: Formula
+    directory: Casks
     homepage: "https://github.com/ginjigo/ginji"
     description: "Ultra-fast, zero-dependency API framework for Go"
     license: "MIT"
