@@ -39,7 +39,12 @@ func generateProject(opts ProjectOptions) error {
 		return fmt.Errorf("failed to process templates: %w", err)
 	}
 
-	// 3. Clean up (remove any unnecessary files if needed, though we only extracted what we need)
+	// 3. Clean up
+	if opts.Deployment != "Docker" {
+		if err := os.Remove(filepath.Join(opts.Name, "Dockerfile")); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to remove Dockerfile: %w", err)
+		}
+	}
 
 	return nil
 }

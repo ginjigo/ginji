@@ -1,3 +1,5 @@
+package database
+
 {{if eq .ORM "GORM"}}
 import (
 	"gorm.io/gorm"
