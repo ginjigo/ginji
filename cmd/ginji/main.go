@@ -83,19 +83,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
-			if m.step == 0 {
+			switch m.step {
+			case 0:
 				if m.inputs[0].Value() != "" {
 					m.step++
 				}
-			} else if m.step == 1 {
+			case 1:
 				m.step++
-			} else if m.step == 2 {
+			case 2:
 				m.step++
-			} else if m.step == 3 {
+			case 3:
 				m.step++
-			} else if m.step == 4 {
+			case 4:
 				m.step++
-			} else if m.step == 5 {
+			case 5:
 				// Generate Project
 				projectName := strings.TrimSpace(m.inputs[0].Value())
 				opts := ProjectOptions{
@@ -112,51 +113,53 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.step++
 				return m, nil
-			} else if m.step == 6 {
+			case 6:
 				return m, tea.Quit
 			}
 
 		case "up", "k":
-			if m.step == 1 {
+			switch m.step {
+			case 1:
 				if m.dbIndex > 0 {
 					m.dbIndex--
 				}
-			} else if m.step == 2 {
+			case 2:
 				if m.ormIndex > 0 {
 					m.ormIndex--
 				}
-			} else if m.step == 3 {
+			case 3:
 				if m.focusIndex > 0 {
 					m.focusIndex--
 				}
-			} else if m.step == 4 {
+			case 4:
 				if m.deployIndex > 0 {
 					m.deployIndex--
 				}
-			} else if m.step == 5 {
+			case 5:
 				if m.testsIndex > 0 {
 					m.testsIndex--
 				}
 			}
 
 		case "down", "j":
-			if m.step == 1 {
+			switch m.step {
+			case 1:
 				if m.dbIndex < len(dbOptions)-1 {
 					m.dbIndex++
 				}
-			} else if m.step == 2 {
+			case 2:
 				if m.ormIndex < len(ormOptions)-1 {
 					m.ormIndex++
 				}
-			} else if m.step == 3 {
+			case 3:
 				if m.focusIndex < len(mwOptions)-1 {
 					m.focusIndex++
 				}
-			} else if m.step == 4 {
+			case 4:
 				if m.deployIndex < len(deployOptions)-1 {
 					m.deployIndex++
 				}
-			} else if m.step == 5 {
+			case 5:
 				if m.testsIndex < len(testOptions)-1 {
 					m.testsIndex++
 				}
@@ -198,11 +201,12 @@ func getSelectedMiddlewares(indices map[int]bool) []string {
 func (m model) View() string {
 	var s string
 
-	if m.step == 0 {
+	switch m.step {
+	case 0:
 		s = titleStyle.Render("Create New Ginji Project") + "\n\n"
 		s += m.inputs[0].View() + "\n\n"
 		s += helpStyle.Render("Enter project name")
-	} else if m.step == 1 {
+	case 1:
 		s = titleStyle.Render("Select Database") + "\n\n"
 		for i, choice := range dbOptions {
 			cursor := " "
@@ -212,7 +216,7 @@ func (m model) View() string {
 			}
 			s += fmt.Sprintf("%s %s\n", cursor, choice)
 		}
-	} else if m.step == 2 {
+	case 2:
 		s = titleStyle.Render("Select ORM") + "\n\n"
 		for i, choice := range ormOptions {
 			cursor := " "
@@ -222,7 +226,7 @@ func (m model) View() string {
 			}
 			s += fmt.Sprintf("%s %s\n", cursor, choice)
 		}
-	} else if m.step == 3 {
+	case 3:
 		s = titleStyle.Render("Select Middleware (Space to select)") + "\n\n"
 		for i, choice := range mwOptions {
 			cursor := " "
@@ -238,7 +242,7 @@ func (m model) View() string {
 			}
 			s += fmt.Sprintf("%s %s %s\n", cursor, checked, choice)
 		}
-	} else if m.step == 4 {
+	case 4:
 		s = titleStyle.Render("Select Deployment") + "\n\n"
 		for i, choice := range deployOptions {
 			cursor := " "
@@ -248,7 +252,7 @@ func (m model) View() string {
 			}
 			s += fmt.Sprintf("%s %s\n", cursor, choice)
 		}
-	} else if m.step == 5 {
+	case 5:
 		s = titleStyle.Render("Generate Tests?") + "\n\n"
 		for i, choice := range testOptions {
 			cursor := " "
@@ -258,7 +262,7 @@ func (m model) View() string {
 			}
 			s += fmt.Sprintf("%s %s\n", cursor, choice)
 		}
-	} else {
+	default:
 		s = titleStyle.Render("Project Created Successfully!") + "\n\n"
 		s += fmt.Sprintf("cd %s\n", strings.TrimSpace(m.inputs[0].Value()))
 		s += "go mod tidy\n"
