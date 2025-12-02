@@ -32,8 +32,22 @@ func main() {
 
 ## Quick Start
 
+**Homebrew**
+
 ```bash
-go get github.com/ginjigo/ginji
+brew install ginjigo/tap/ginji
+```
+
+**Go Install**
+
+```bash
+go install github.com/ginjigo/ginji/cmd/ginji@latest
+```
+
+### Create a New Project
+
+```bash
+ginji new my-app
 ```
 
 ## Features
