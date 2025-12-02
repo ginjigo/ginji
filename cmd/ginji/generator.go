@@ -74,7 +74,7 @@ func generateProject(opts ProjectOptions) error {
 func createMainGo(opts ProjectOptions) error {
 	imports := []string{
 		"fmt",
-		"github.com/ginjigo/ginji/ginji",
+		"github.com/ginjigo/ginji",
 		"net/http",
 	}
 
@@ -177,7 +177,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"github.com/ginjigo/ginji/ginji"
+	"github.com/ginjigo/ginji"
 )
 
 func TestRootRoute(t *testing.T) {

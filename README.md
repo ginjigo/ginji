@@ -16,7 +16,7 @@ Ginji is a brand-new, ultra-fast, zero-dependency API framework for Go, inspired
 package main
 
 import (
-    "github.com/ginjigo/ginji/ginji"
+    "github.com/ginjigo/ginji"
 )
 
 func main() {

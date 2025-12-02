@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ginjigo/ginji/ginji"
+	"github.com/ginjigo/ginji"
 )
 
 func main() {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ginjigo/ginji/ginji"
+	"github.com/ginjigo/ginji"
 )
 
 func main() {

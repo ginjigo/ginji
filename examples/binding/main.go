@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/ginjigo/ginji/ginji"
+	"github.com/ginjigo/ginji"
 )
 
 type User struct {
