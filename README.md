@@ -40,6 +40,9 @@ go install github.com/ginjigo/ginji/cmd/ginji@latest
 
 # Create a new project
 ginji new my-app
+
+# The CLI will download the latest template from GitHub
+# and configure it with your selected options (DB, ORM, etc.)
 ```
 
 ## Features
