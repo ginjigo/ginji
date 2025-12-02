@@ -23,19 +23,19 @@ func main() {
 	app.Post("/users", func(c *ginji.Context) {
 		var user User
 		if err := c.BindJSON(&user); err != nil {
-			c.JSON(ginji.StatusBadRequest, ginji.H{"error": err.Error()})
+			_ = c.JSON(ginji.StatusBadRequest, ginji.H{"error": err.Error()})
 			return
 		}
-		c.JSON(ginji.StatusCreated, user)
+		_ = c.JSON(ginji.StatusCreated, user)
 	})
 
 	app.Get("/search", func(c *ginji.Context) {
 		var query SearchQuery
 		if err := c.BindQuery(&query); err != nil {
-			c.JSON(ginji.StatusBadRequest, ginji.H{"error": err.Error()})
+			_ = c.JSON(ginji.StatusBadRequest, ginji.H{"error": err.Error()})
 			return
 		}
-		c.JSON(ginji.StatusOK, query)
+		_ = c.JSON(ginji.StatusOK, query)
 	})
 
 	fmt.Println("Server running on :8082")

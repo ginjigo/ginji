@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -14,10 +13,8 @@ import (
 var (
 	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	blurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	cursorStyle  = focusedStyle.Copy()
-	noStyle      = lipgloss.NewStyle()
-	helpStyle    = blurredStyle.Copy()
-	cursorMode   = cursor.CursorBlink
+	cursorStyle  = focusedStyle
+	helpStyle    = blurredStyle
 
 	titleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FAFAFA")).
@@ -29,7 +26,6 @@ var (
 type model struct {
 	focusIndex int
 	inputs     []textinput.Model
-	cursorMode cursor.Mode
 
 	// Selections
 	dbIndex     int

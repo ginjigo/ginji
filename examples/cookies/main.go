@@ -19,16 +19,16 @@ func main() {
 			HttpOnly: true,
 		}
 		c.SetCookie(cookie)
-		c.Text(ginji.StatusOK, "Cookie set!")
+		_ = c.Text(ginji.StatusOK, "Cookie set!")
 	})
 
 	app.Get("/get", func(c *ginji.Context) {
 		cookie, err := c.Cookie("user")
 		if err != nil {
-			c.Text(ginji.StatusBadRequest, "Cookie not found")
+			_ = c.Text(ginji.StatusBadRequest, "Cookie not found")
 			return
 		}
-		c.Text(ginji.StatusOK, "User: "+cookie.Value)
+		_ = c.Text(ginji.StatusOK, "User: "+cookie.Value)
 	})
 
 	fmt.Println("Server running on :8083")

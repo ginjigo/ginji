@@ -9,7 +9,7 @@ import (
 func TestWildcardRoute(t *testing.T) {
 	app := New()
 	app.Get("/files/*filepath", func(c *Context) {
-		c.Text(http.StatusOK, c.Param("filepath"))
+		_ = c.Text(http.StatusOK, c.Param("filepath"))
 	})
 
 	// Test simple file
@@ -32,7 +32,7 @@ func TestWildcardRoute(t *testing.T) {
 func TestRequestWithWildcard(t *testing.T) {
 	app := New()
 	app.Get("/files/:name/info", func(c *Context) {
-		c.Text(http.StatusOK, c.Param("name"))
+		_ = c.Text(http.StatusOK, c.Param("name"))
 	})
 
 	// Request with * in path

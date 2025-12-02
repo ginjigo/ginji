@@ -19,7 +19,7 @@ func main() {
 	app.Static("/assets", "./examples/basic/public")
 
 	app.Get("/", func(c *ginji.Context) {
-		c.HTML(http.StatusOK, "<h1>Hello Ginji</h1>")
+		_ = c.HTML(http.StatusOK, "<h1>Hello Ginji</h1>")
 	})
 
 	// Group Routing
@@ -30,7 +30,7 @@ func main() {
 			if name == "" {
 				name = "Guest"
 			}
-			c.JSON(http.StatusOK, ginji.H{
+			_ = c.JSON(http.StatusOK, ginji.H{
 				"message": fmt.Sprintf("Hello %s", name),
 			})
 		})
@@ -41,14 +41,14 @@ func main() {
 				Password string `json:"password" ginji:"required"`
 			}
 			if err := c.BindJSON(&json); err != nil {
-				c.JSON(http.StatusBadRequest, ginji.H{"error": err.Error()})
+				_ = c.JSON(http.StatusBadRequest, ginji.H{"error": err.Error()})
 				return
 			}
 			if json.User != "admin" || json.Password != "123456" {
-				c.JSON(http.StatusUnauthorized, ginji.H{"status": "unauthorized"})
+				_ = c.JSON(http.StatusUnauthorized, ginji.H{"status": "unauthorized"})
 				return
 			}
-			c.JSON(http.StatusOK, ginji.H{"status": "authorized"})
+			_ = c.JSON(http.StatusOK, ginji.H{"status": "authorized"})
 		})
 
 		v1.Get("/panic", func(c *ginji.Context) {

@@ -15,7 +15,7 @@ func Recovery() Middleware {
 				if err := recover(); err != nil {
 					message := fmt.Sprintf("%s", err)
 					log.Printf("%s\n\n", trace(message))
-					c.Text(http.StatusInternalServerError, "Internal Server Error")
+					_ = c.Text(http.StatusInternalServerError, "Internal Server Error")
 				}
 			}()
 			next(c)

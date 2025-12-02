@@ -12,7 +12,7 @@ func TestRequestID(t *testing.T) {
 	app := New()
 	app.Use(RequestID())
 	app.Get("/", func(c *Context) {
-		c.Text(http.StatusOK, "ok")
+		_ = c.Text(http.StatusOK, "ok")
 	})
 
 	req := httptest.NewRequest("GET", "/", nil)
@@ -28,7 +28,7 @@ func TestCompress(t *testing.T) {
 	app := New()
 	app.Use(Compress())
 	app.Get("/", func(c *Context) {
-		c.Text(http.StatusOK, "compressed content")
+		_ = c.Text(http.StatusOK, "compressed content")
 	})
 
 	req := httptest.NewRequest("GET", "/", nil)

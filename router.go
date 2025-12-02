@@ -168,6 +168,6 @@ func (r *Router) handle(c *Context) {
 		key := c.Req.Method + "-" + n.pattern
 		r.handlers[key](c)
 	} else {
-		c.Text(http.StatusNotFound, "404 NOT FOUND")
+		_ = c.Text(http.StatusNotFound, "404 NOT FOUND")
 	}
 }

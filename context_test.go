@@ -15,10 +15,10 @@ func TestBindQuery(t *testing.T) {
 	app.Get("/test", func(c *Context) {
 		var ts TestStruct
 		if err := c.BindQuery(&ts); err != nil {
-			c.Text(http.StatusInternalServerError, err.Error())
+			_ = c.Text(http.StatusInternalServerError, err.Error())
 			return
 		}
-		c.Text(http.StatusOK, ts.Name)
+		_ = c.Text(http.StatusOK, ts.Name)
 	})
 
 	req := httptest.NewRequest("GET", "/test?name=ginji", nil)
@@ -35,10 +35,10 @@ func TestBindHeader(t *testing.T) {
 	app.Get("/test", func(c *Context) {
 		var ts TestStruct
 		if err := c.BindHeader(&ts); err != nil {
-			c.Text(http.StatusInternalServerError, err.Error())
+			_ = c.Text(http.StatusInternalServerError, err.Error())
 			return
 		}
-		c.Text(http.StatusOK, ts.Name)
+		_ = c.Text(http.StatusOK, ts.Name)
 	})
 
 	req := httptest.NewRequest("GET", "/test", nil)

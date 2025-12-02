@@ -29,12 +29,12 @@ func main() {
 	})
 
 	app.Get("/", func(c *ginji.Context) {
-		c.Text(ginji.StatusOK, "Hello Middleware! Check headers for X-Request-ID and Content-Encoding.")
+		_ = c.Text(ginji.StatusOK, "Hello Middleware! Check headers for X-Request-ID and Content-Encoding.")
 	})
 
 	app.Get("/id", func(c *ginji.Context) {
 		id, _ := c.Get("request_id")
-		c.JSON(ginji.StatusOK, ginji.H{
+		_ = c.JSON(ginji.StatusOK, ginji.H{
 			"request_id": id,
 		})
 	})

@@ -44,12 +44,12 @@ func main() {
 
 		var user User
 		if err := c.BindJSON(&user); err != nil {
-			c.JSON(ginji.StatusBadRequest, ginji.H{"error": err.Error()})
+			_ = c.JSON(ginji.StatusBadRequest, ginji.H{"error": err.Error()})
 			return
 		}
 
 		conn.Create(&user)
-		c.JSON(ginji.StatusCreated, user)
+		_ = c.JSON(ginji.StatusCreated, user)
 	})
 
 	app.Get("/users", func(c *ginji.Context) {
@@ -58,7 +58,7 @@ func main() {
 
 		var users []User
 		conn.Find(&users)
-		c.JSON(ginji.StatusOK, users)
+		_ = c.JSON(ginji.StatusOK, users)
 	})
 
 	app.Get("/users/:id", func(c *ginji.Context) {
@@ -68,10 +68,10 @@ func main() {
 
 		var user User
 		if result := conn.First(&user, id); result.Error != nil {
-			c.JSON(ginji.StatusNotFound, ginji.H{"error": "User not found"})
+			_ = c.JSON(ginji.StatusNotFound, ginji.H{"error": "User not found"})
 			return
 		}
-		c.JSON(ginji.StatusOK, user)
+		_ = c.JSON(ginji.StatusOK, user)
 	})
 
 	fmt.Println("Server is running on :3000")
