@@ -1,5 +1,3 @@
-package database
-
 {{if eq .ORM "GORM"}}
 import (
 	"gorm.io/gorm"
@@ -21,6 +19,37 @@ func Connect() {
 	if err != nil {
 		panic("failed to connect database")
 	}
+}
+{{else if eq .ORM "sqlc"}}
+import (
+	"database/sql"
+	_ "github.com/lib/pq"
+)
+
+var DB *sql.DB
+
+func Connect() {
+	// TODO: Initialize sqlc connection
+	// DB, err := sql.Open("postgres", "user=foo dbname=bar sslmode=disable")
+}
+{{else if eq .ORM "ent"}}
+import (
+	"context"
+	"log"
+	"entgo.io/ent/dialect"
+	_ "github.com/mattn/go-sqlite3"
+	// "your_project/ent" // Import your generated ent package
+)
+
+func Connect() {
+	// client, err := ent.Open(dialect.SQLite, "file:ent?mode=memory&cache=shared&_fk=1")
+	// if err != nil {
+	// 	log.Fatalf("failed opening connection to sqlite: %v", err)
+	// }
+	// defer client.Close()
+	// if err := client.Schema.Create(context.Background()); err != nil {
+	// 	log.Fatalf("failed creating schema resources: %v", err)
+	// }
 }
 {{else}}
 func Connect() {
