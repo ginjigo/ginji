@@ -5,10 +5,10 @@
 
 <hr />
 
-[![CI](https://github.com/kalana/ginji/actions/workflows/ci.yml/badge.svg)](https://github.com/kalana/ginji/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/kalana/ginji)](https://goreportcard.com/report/github.com/kalana/ginji)
-[![License](https://img.shields.io/github/license/kalana/ginji)](https://github.com/kalana/ginji/blob/main/LICENSE)
-[![GoDoc](https://pkg.go.dev/badge/github.com/kalana/ginji.svg)](https://pkg.go.dev/github.com/kalana/ginji)
+[![CI](https://github.com/ginjigo/ginji/actions/workflows/ci.yml/badge.svg)](https://github.com/ginjigo/ginji/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ginjigo/ginji)](https://goreportcard.com/report/github.com/ginjigo/ginji)
+[![License](https://img.shields.io/github/license/ginjigo/ginji)](https://github.com/ginjigo/ginji/blob/main/LICENSE)
+[![GoDoc](https://pkg.go.dev/badge/github.com/ginjigo/ginji.svg)](https://pkg.go.dev/github.com/ginjigo/ginji)
 
 Ginji is a brand-new, ultra-fast, zero-dependency API framework for Go, inspired by Hono, Fiber, and Gin. It aims to provide a minimal, fast, and clean foundation for building web applications.
 
@@ -34,7 +34,7 @@ func main() {
 ## Quick Start
 
 ```bash
-go get github.com/kalana/ginji
+go get github.com/ginjigo/ginji
 ```
 
 ## Features
