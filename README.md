@@ -17,14 +17,13 @@ package main
 
 import (
     "github.com/ginjigo/ginji/ginji"
-    "net/http"
 )
 
 func main() {
     app := ginji.New()
 
     app.Get("/", func(c *ginji.Context) {
-        c.Text(http.StatusOK, "Hello Ginji")
+        c.Text(ginji.StatusOK, "Hello Ginji")
     })
 
     app.Listen(":3000")
