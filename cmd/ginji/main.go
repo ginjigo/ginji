@@ -41,7 +41,7 @@ type model struct {
 	step int // 0: Name, 1: DB, 2: ORM, 3: Middleware, 4: Deployment, 5: Tests, 6: Done
 }
 
-func initialModel() model {
+func initialModel(initialName string) model {
 	m := model{
 		inputs:    make([]textinput.Model, 1),
 		mwIndices: make(map[int]bool),
@@ -59,9 +59,16 @@ func initialModel() model {
 			t.Focus()
 			t.PromptStyle = focusedStyle
 			t.TextStyle = focusedStyle
+			if initialName != "" {
+				t.SetValue(initialName)
+			}
 		}
 
 		m.inputs[i] = t
+	}
+
+	if initialName != "" {
+		m.step = 1
 	}
 
 	return m
@@ -270,7 +277,12 @@ var deployOptions = []string{"None", "Docker"}
 var testOptions = []string{"Yes", "No"}
 
 func main() {
-	p := tea.NewProgram(initialModel())
+	initialName := ""
+	if len(os.Args) > 2 && os.Args[1] == "new" {
+		initialName = os.Args[2]
+	}
+
+	p := tea.NewProgram(initialModel(initialName))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
