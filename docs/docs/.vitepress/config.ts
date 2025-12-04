@@ -3,8 +3,10 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'Ginji',
   description: 'Go Framework for Modern Web Services',
-  base: '/ginji/',
-  
+  base: '/',
+  sitemap: {
+    hostname: 'https://ginji.io'
+  },
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
