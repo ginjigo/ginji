@@ -1,11 +1,55 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/ginjigo/ginji"
 )
+
+// bufferedResponseWriter buffers the response until we know if timeout occurred
+type bufferedResponseWriter struct {
+	header http.Header
+	buf    *bytes.Buffer
+	status int
+}
+
+func newBufferedResponseWriter() *bufferedResponseWriter {
+	return &bufferedResponseWriter{
+		header: make(http.Header),
+		buf:    new(bytes.Buffer),
+		status: 200,
+	}
+}
+
+func (w *bufferedResponseWriter) Header() http.Header {
+	return w.header
+}
+
+func (w *bufferedResponseWriter) Write(b []byte) (int, error) {
+	return w.buf.Write(b)
+}
+
+func (w *bufferedResponseWriter) WriteHeader(statusCode int) {
+	w.status = statusCode
+}
+
+// copyTo copies the buffered response to the actual response writer
+func (w *bufferedResponseWriter) copyTo(dst http.ResponseWriter) {
+	// Copy headers
+	for k, v := range w.header {
+		for _, vv := range v {
+			dst.Header().Add(k, vv)
+		}
+	}
+	// Write status
+	dst.WriteHeader(w.status)
+	// Write body
+	_, _ = dst.Write(w.buf.Bytes())
+}
 
 // TimeoutConfig defines the configuration for timeout middleware.
 type TimeoutConfig struct {
@@ -66,6 +110,11 @@ func TimeoutWithConfig(config TimeoutConfig) ginji.Middleware {
 			// Replace request context
 			c.Req = c.Req.WithContext(ctx)
 
+			// Replace response writer with buffered version
+			originalRes := c.Res
+			buffered := newBufferedResponseWriter()
+			c.Res = buffered
+
 			// Channel to signal completion
 			done := make(chan struct{})
 
@@ -77,6 +126,7 @@ func TimeoutWithConfig(config TimeoutConfig) ginji.Middleware {
 						panic(r)
 					}
 				}()
+
 				next(c)
 				close(done)
 			}()
@@ -84,16 +134,22 @@ func TimeoutWithConfig(config TimeoutConfig) ginji.Middleware {
 			// Wait for either completion or timeout
 			select {
 			case <-done:
-				// Handler completed successfully
+				// Handler completed successfully - write buffered response
+				buffered.copyTo(originalRes)
 				return
 			case <-ctx.Done():
-				// Timeout occurred
+				// Timeout occurred - write timeout response DIRECTLY to original writer
+				// DO NOT restore c.Res - let handler continue writing to buffer which will be discarded
 				if ctx.Err() == context.DeadlineExceeded {
 					if !c.IsAborted() {
-						c.AbortWithStatusJSON(config.StatusCode, ginji.H{
+						// Write directly to original writer, bypassing the context
+						originalRes.Header().Set("Content-Type", "application/json")
+						originalRes.WriteHeader(config.StatusCode)
+						jsonData, _ := json.Marshal(ginji.H{
 							"error":   config.ErrorMessage,
 							"timeout": config.Timeout.String(),
 						})
+						_, _ = originalRes.Write(jsonData)
 					}
 				}
 				return

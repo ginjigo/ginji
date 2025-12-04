@@ -159,9 +159,16 @@ func handleReadiness(c *ginji.Context, config HealthCheckConfig) {
 		mu.Unlock()
 	}
 
-	// Build response
+	// Build response - copy results map while holding lock
+	mu.Lock()
+	resultsCopy := make(map[string]string, len(results))
+	for k, v := range results {
+		resultsCopy[k] = v
+	}
+	mu.Unlock()
+
 	status := HealthStatus{
-		Checks: results,
+		Checks: resultsCopy,
 		Time:   time.Now().UTC().Format(time.RFC3339),
 	}
 
