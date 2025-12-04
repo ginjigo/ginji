@@ -5,19 +5,18 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 )
 
 // RequestID adds a unique ID to the request context and header.
 func RequestID() Middleware {
-	return func(next Handler) Handler {
-		return func(c *Context) {
-			id := generateRandomID()
-			c.SetHeader("X-Request-ID", id)
-			c.Set("request_id", id)
-			next(c)
-		}
+	return func(c *Context) {
+		id := generateRandomID()
+		c.SetHeader("X-Request-ID", id)
+		c.Set("request_id", id)
+		c.Next()
 	}
 }
 
@@ -41,33 +40,35 @@ func (w *gzipResponseWriter) Write(b []byte) (int, error) {
 
 // Compress enables Gzip compression for responses.
 func Compress() Middleware {
-	return func(next Handler) Handler {
-		return func(c *Context) {
-			if !strings.Contains(c.Req.Header.Get("Accept-Encoding"), "gzip") {
-				next(c)
-				return
-			}
-
-			w := c.Res
-			gz := gzip.NewWriter(w)
-			defer func() { _ = gz.Close() }()
-
-			// Wrap the response writer
-			gzw := &gzipResponseWriter{Writer: gz, ResponseWriter: w}
-
-			// We need to hack the context to use our new writer
-			// But Context uses a custom responseWriter.
-			// We should probably update Context to allow swapping the writer or just wrap it here.
-			// The Context struct has `Res http.ResponseWriter`. We can update that.
-			originalRes := c.Res
-			c.Res = gzw
-			c.SetHeader("Content-Encoding", "gzip")
-			c.SetHeader("Vary", "Accept-Encoding")
-
-			next(c)
-
-			// Restore original writer (not strictly necessary but good practice)
-			c.Res = originalRes
+	return func(c *Context) {
+		if !strings.Contains(c.Req.Header.Get("Accept-Encoding"), "gzip") {
+			c.Next()
+			return
 		}
+
+		w := c.Res
+		gz := gzip.NewWriter(w)
+		defer func() {
+			if err := gz.Close(); err != nil {
+				log.Printf("Failed to close gzip writer: %v", err)
+			}
+		}()
+
+		// Wrap the response writer
+		gzw := &gzipResponseWriter{Writer: gz, ResponseWriter: w}
+
+		// We need to hack the context to use our new writer
+		// But Context uses a custom responseWriter.
+		// We should probably update Context to allow swapping the writer or just wrap it here.
+		// The Context struct has `Res http.ResponseWriter`. We can update that.
+		originalRes := c.Res
+		c.Res = gzw
+		c.SetHeader("Content-Encoding", "gzip")
+		c.SetHeader("Vary", "Accept-Encoding")
+
+		c.Next()
+
+		// Restore original writer (not strictly necessary but good practice)
+		c.Res = originalRes
 	}
 }

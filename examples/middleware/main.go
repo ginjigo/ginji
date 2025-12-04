@@ -15,17 +15,15 @@ func main() {
 	app.Use(ginji.Compress())
 
 	// Custom Logger Middleware
-	app.Use(func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			start := time.Now()
-			next(c)
-			fmt.Printf("[%s] %s %s %v\n",
-				time.Now().Format(time.RFC3339),
-				c.Req.Method,
-				c.Req.URL.Path,
-				time.Since(start),
-			)
-		}
+	app.Use(func(c *ginji.Context) {
+		start := time.Now()
+		c.Next()
+		fmt.Printf("[%s] %s %s %v\n",
+			time.Now().Format(time.RFC3339),
+			c.Req.Method,
+			c.Req.URL.Path,
+			time.Since(start),
+		)
 	})
 
 	app.Get("/", func(c *ginji.Context) {

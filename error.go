@@ -43,7 +43,8 @@ func NewHTTPError(code int, message ...string) *HTTPError {
 	if len(message) > 0 {
 		err.Message = message[0]
 	}
-	if isDevelopmentMode() {
+	// Only capture stack traces in debug mode
+	if mode == DebugMode {
 		err.stack = captureStackTrace()
 	}
 	return err
@@ -94,15 +95,13 @@ type ErrorResponse struct {
 
 // DefaultErrorHandler is the default error handler middleware.
 func DefaultErrorHandler() Middleware {
-	return func(next Handler) Handler {
-		return func(c *Context) {
-			defer func() {
-				if c.error != nil {
-					handleError(c, c.error)
-				}
-			}()
-			next(c)
-		}
+	return func(c *Context) {
+		defer func() {
+			if c.error != nil {
+				handleError(c, c.error)
+			}
+		}()
+		c.Next()
 	}
 }
 
@@ -130,8 +129,8 @@ func handleError(c *Context, err error) {
 
 	// Build error response
 	response := ErrorResponse{
-		Error:  httpErr.Message,
-		Code:   httpErr.Code,
+		Error:   httpErr.Message,
+		Code:    httpErr.Code,
 		Details: httpErr.Details,
 	}
 
@@ -140,8 +139,8 @@ func handleError(c *Context, err error) {
 		response.Errors = validationErrs
 	}
 
-	// Add stack trace in development mode
-	if isDevelopmentMode() && httpErr.stack != "" {
+	// Only add stack trace in debug mode, never in production
+	if mode == DebugMode && httpErr.stack != "" {
 		response.Stack = httpErr.stack
 	}
 
@@ -154,14 +153,14 @@ func captureStackTrace() string {
 	const maxStackSize = 50
 	pcs := make([]uintptr, maxStackSize)
 	n := runtime.Callers(3, pcs) // skip first 3 frames
-	
+
 	if n == 0 {
 		return ""
 	}
 
 	frames := runtime.CallersFrames(pcs[:n])
 	var trace string
-	
+
 	for {
 		frame, more := frames.Next()
 		trace += fmt.Sprintf("\n  %s:%d %s", frame.File, frame.Line, frame.Function)
@@ -169,14 +168,13 @@ func captureStackTrace() string {
 			break
 		}
 	}
-	
+
 	return trace
 }
 
 // isDevelopmentMode checks if we're in development mode.
-// This can be expanded to check environment variables or global config.
 func isDevelopmentMode() bool {
-	// TODO: Make this configurable via Engine config
+	// Stack traces only in debug mode for security
 	return mode == DebugMode
 }
 

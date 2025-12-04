@@ -265,15 +265,13 @@ func TestRequireRole(t *testing.T) {
 	app := ginji.New()
 
 	// Mock auth middleware that sets user
-	app.Use(func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			// Simulate authenticated user with role
-			c.Set("user", map[string]any{
-				"id":   "user1",
-				"role": "admin",
-			})
-			next(c)
-		}
+	app.Use(func(c *ginji.Context) {
+		// Simulate authenticated user with role
+		c.Set("user", map[string]any{
+			"id":   "user1",
+			"role": "admin",
+		})
+		c.Next()
 	})
 
 	app.Use(RequireRole("admin"))
@@ -294,14 +292,12 @@ func TestRequireRoleInsufficientPermissions(t *testing.T) {
 	app := ginji.New()
 
 	// Mock auth middleware with different role
-	app.Use(func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			c.Set("user", map[string]any{
-				"id":   "user1",
-				"role": "user", // Not admin
-			})
-			next(c)
-		}
+	app.Use(func(c *ginji.Context) {
+		c.Set("user", map[string]any{
+			"id":   "user1",
+			"role": "user", // Not admin
+		})
+		c.Next()
 	})
 
 	app.Use(RequireRole("admin"))
@@ -324,14 +320,12 @@ func TestRequireRoleWithRolesArray(t *testing.T) {
 	app := ginji.New()
 
 	// Mock auth with roles array
-	app.Use(func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			c.Set("user", map[string]any{
-				"id":    "user1",
-				"roles": []string{"user", "moderator"},
-			})
-			next(c)
-		}
+	app.Use(func(c *ginji.Context) {
+		c.Set("user", map[string]any{
+			"id":    "user1",
+			"roles": []string{"user", "moderator"},
+		})
+		c.Next()
 	})
 
 	app.Use(RequireRole("moderator"))

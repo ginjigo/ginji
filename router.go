@@ -2,6 +2,7 @@ package ginji
 
 import (
 	"net/http"
+	"reflect"
 	"strings"
 )
 
@@ -67,6 +68,34 @@ func (n *node) matchChild(part string) *node {
 	return nil
 }
 
+// getRouteMetadata returns metadata for a route.
+func (r *Router) getRouteMetadata(key string) *RouteMetadata {
+	if meta, ok := r.metadata[key]; ok {
+		return meta
+	}
+	return &RouteMetadata{
+		Responses: make(map[string]reflect.Type),
+	}
+}
+
+// setRouteMetadata sets metadata for a route.
+func (r *Router) setRouteMetadata(key string, meta *RouteMetadata) {
+	if meta.Responses == nil {
+		meta.Responses = make(map[string]reflect.Type)
+	}
+	r.metadata[key] = meta
+}
+
+// setRouteMiddleware stores middleware for a specific route.
+func (r *Router) setRouteMiddleware(key string, middlewares []Middleware) {
+	r.routeMiddleware[key] = middlewares
+}
+
+// getRouteMiddleware retrieves middleware for a specific route.
+func (r *Router) getRouteMiddleware(key string) []Middleware {
+	return r.routeMiddleware[key]
+}
+
 func (n *node) matchChildren(part string) []*node {
 	nodes := make([]*node, 0)
 	for _, child := range n.children {
@@ -77,17 +106,32 @@ func (n *node) matchChildren(part string) []*node {
 	return nodes
 }
 
+// RouteMetadata stores metadata for a route.
+type RouteMetadata struct {
+	Summary     string
+	Description string
+	Tags        []string
+	OperationID string
+	RequestType reflect.Type
+	Responses   map[string]reflect.Type
+	Deprecated  bool
+}
+
 // Router handles request routing.
 type Router struct {
-	roots    map[string]*node
-	handlers map[string]Handler
+	roots           map[string]*node
+	handlers        map[string]Handler
+	metadata        map[string]*RouteMetadata
+	routeMiddleware map[string][]Middleware
 }
 
 // newRouter creates a new Router instance.
 func newRouter() *Router {
 	return &Router{
-		roots:    make(map[string]*node),
-		handlers: make(map[string]Handler),
+		roots:           make(map[string]*node),
+		handlers:        make(map[string]Handler),
+		metadata:        make(map[string]*RouteMetadata),
+		routeMiddleware: make(map[string][]Middleware),
 	}
 }
 
@@ -144,14 +188,48 @@ func (r *Router) getRoute(method string, path string) (*node, map[string]string)
 	return nil, nil
 }
 
-// handle executes the handler for a given context.
-func (r *Router) handle(c *Context) {
+// handle dispatches the request to the matched handler.
+func (r *Router) handle(c *Context, engine *Engine) {
+	// Execute OnRequest hooks
+	if engine != nil {
+		engine.executeOnRequest(c)
+		if c.aborted {
+			return
+		}
+	}
+
 	n, params := r.getRoute(c.Req.Method, c.Req.URL.Path)
 	if n != nil {
 		c.Params = params
+
+		// Execute OnRoute hooks
+		if engine != nil {
+			engine.executeOnRoute(c)
+			if c.aborted {
+				return
+			}
+		}
+
 		key := c.Req.Method + "-" + n.pattern
-		r.handlers[key](c)
+		handler := r.handlers[key]
+
+		// Get route-specific middleware
+		routeMW := r.getRouteMiddleware(key)
+
+		// Append route middleware
+		for _, mw := range routeMW {
+			c.handlers = append(c.handlers, Handler(mw))
+		}
+
+		// Append final handler
+		c.handlers = append(c.handlers, handler)
+
+		// Note: OnResponse hooks are executed in ginji.go ServeHTTP as part of the middleware chain.
+		// The first middleware added wraps c.Next() to execute hooks after all handlers complete.
+
 	} else {
-		_ = c.Text(http.StatusNotFound, "404 NOT FOUND")
+		c.handlers = append(c.handlers, func(c *Context) {
+			_ = c.Text(http.StatusNotFound, "404 NOT FOUND")
+		})
 	}
 }

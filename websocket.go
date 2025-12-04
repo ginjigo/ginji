@@ -2,11 +2,14 @@ package ginji
 
 import (
 	"crypto/sha1"
-	"encoding/base64"
-	"errors"
+	"encoding/base64" // Added for JSON marshaling/unmarshaling
+	"errors"          // Added for error formatting/logging
+	"fmt"
 	"io"
+	"log" // Added for logging errors
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -21,8 +24,14 @@ const (
 )
 
 // maxWebSocketPayloadSize limits the maximum payload size for WebSocket messages sent by WriteMessage, in bytes.
-// 64 MiB is a typical upper bound, safe for most environments (adjust as appropriate for your application).
-const maxWebSocketPayloadSize = 64 * 1024 * 1024
+// 1 MiB is a safe default for most applications (adjust as appropriate for your application).
+const maxWebSocketPayloadSize = 1 * 1024 * 1024
+
+// defaultReadTimeout is the default timeout for read operations.
+const defaultReadTimeout = 60 * time.Second
+
+// defaultWriteTimeout is the default timeout for write operations.
+const defaultWriteTimeout = 10 * time.Second
 
 // WebSocketConn represents a WebSocket connection.
 type WebSocketConn struct {
@@ -45,8 +54,20 @@ type WebSocketConfig struct {
 	HandshakeTimeout time.Duration
 
 	// CheckOrigin returns true if the request Origin header is acceptable.
-	// If nil, a safe default is used.
+	// If nil, a safe default (same-origin policy) is used.
 	CheckOrigin func(*Context) bool
+
+	// MaxMessageSize is the maximum size of messages in bytes.
+	// Default: 1MB
+	MaxMessageSize int64
+
+	// ReadTimeout is the timeout for read operations.
+	// Default: 60 seconds
+	ReadTimeout time.Duration
+
+	// WriteTimeout is the timeout for write operations.
+	// Default: 10 seconds
+	WriteTimeout time.Duration
 }
 
 // DefaultWebSocketConfig returns default WebSocket configuration.
@@ -55,7 +76,10 @@ func DefaultWebSocketConfig() WebSocketConfig {
 		ReadBufferSize:   4096,
 		WriteBufferSize:  4096,
 		HandshakeTimeout: 10 * time.Second,
-		CheckOrigin:      nil,
+		CheckOrigin:      checkSameOrigin,
+		MaxMessageSize:   maxWebSocketPayloadSize,
+		ReadTimeout:      defaultReadTimeout,
+		WriteTimeout:     defaultWriteTimeout,
 	}
 }
 
@@ -74,6 +98,18 @@ func NewWebSocketUpgrader(config WebSocketConfig) *WebSocketUpgrader {
 	}
 	if config.HandshakeTimeout == 0 {
 		config.HandshakeTimeout = 10 * time.Second
+	}
+	if config.CheckOrigin == nil {
+		config.CheckOrigin = checkSameOrigin
+	}
+	if config.MaxMessageSize == 0 {
+		config.MaxMessageSize = maxWebSocketPayloadSize
+	}
+	if config.ReadTimeout == 0 {
+		config.ReadTimeout = defaultReadTimeout
+	}
+	if config.WriteTimeout == 0 {
+		config.WriteTimeout = defaultWriteTimeout
 	}
 	return &WebSocketUpgrader{config: config}
 }
@@ -140,8 +176,9 @@ func (ws *WebSocketConn) WriteMessage(messageType int, data []byte) error {
 		return errors.New("websocket: connection closed")
 	}
 
-	if len(data) > maxWebSocketPayloadSize {
-		return errors.New("websocket: payload too large")
+	// Enforce maximum payload size
+	if int64(len(data)) > maxWebSocketPayloadSize {
+		return fmt.Errorf("websocket: payload too large (%d bytes, max %d bytes)", len(data), maxWebSocketPayloadSize)
 	}
 
 	// Simple frame format (for basic implementation)
@@ -171,7 +208,12 @@ func (ws *WebSocketConn) ReadMessage() (messageType int, p []byte, err error) {
 	}
 
 	messageType = int(header[0] & 0x0F)
-	payloadLen := int(header[1] & 0x7F)
+	payloadLen := int64(header[1] & 0x7F)
+
+	// Enforce maximum message size
+	if payloadLen > maxWebSocketPayloadSize {
+		return 0, nil, fmt.Errorf("websocket: message too large (%d bytes, max %d bytes)", payloadLen, maxWebSocketPayloadSize)
+	}
 
 	// Read payload
 	payload := make([]byte, payloadLen)
@@ -242,7 +284,11 @@ func (c *Context) WebSocket(handler func(*WebSocketConn)) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = conn.Close() }()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("Failed to close WebSocket connection: %v", err)
+		}
+	}()
 
 	handler(conn)
 	return nil
@@ -318,4 +364,39 @@ func (h *Hub) Count() int {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return len(h.connections)
+}
+
+// checkSameOrigin implements the default same-origin policy for WebSocket connections.
+func checkSameOrigin(c *Context) bool {
+	origin := c.Header("Origin")
+	if origin == "" {
+		// No origin header means not a browser request, allow it
+		return true
+	}
+
+	// Parse the origin
+	originURL := origin
+	if !strings.HasPrefix(originURL, "http://") && !strings.HasPrefix(originURL, "https://") {
+		// Invalid origin
+		return false
+	}
+
+	// Get the request host
+	host := c.Req.Host
+
+	// Check if origin matches host (same-origin)
+	// Extract hostname from origin
+	var originHost string
+	if strings.HasPrefix(originURL, "https://") {
+		originHost = strings.TrimPrefix(originURL, "https://")
+	} else {
+		originHost = strings.TrimPrefix(originURL, "http://")
+	}
+
+	// Remove path if present
+	if idx := strings.Index(originHost, "/"); idx != -1 {
+		originHost = originHost[:idx]
+	}
+
+	return originHost == host
 }

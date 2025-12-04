@@ -2,8 +2,10 @@ package ginji
 
 import (
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
 	"net/http"
+	"strings"
 )
 
 // responseWriter wraps http.ResponseWriter to capture status code.
@@ -29,27 +31,66 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 
 // Context wraps the HTTP request and response writer.
 type Context struct {
-	Req     *http.Request
-	Res     http.ResponseWriter
-	Params  map[string]string
-	writer  *responseWriter
-	Keys    map[string]any
-	error   error // error to be handled by error middleware
-	written bool  // whether response has been written
-	aborted bool  // whether request processing should stop
+	Req      *http.Request
+	Res      http.ResponseWriter
+	Params   map[string]string
+	writer   *responseWriter
+	Keys     map[string]any
+	error    error         // error to be handled by error middleware
+	written  bool          // whether response has been written
+	aborted  bool          // whether request processing should stop
+	services *ServiceScope // service scope for DI
+	handlers []Handler     // middleware chain
+	index    int8          // current handler index
 }
 
 // NewContext creates a new Context instance.
-func NewContext(w http.ResponseWriter, r *http.Request) *Context {
+func NewContext(w http.ResponseWriter, r *http.Request, engine *Engine) *Context {
 	writer := &responseWriter{ResponseWriter: w, status: 200}
-	return &Context{
-		Req:     r,
-		Res:     writer,
-		Params:  make(map[string]string),
-		writer:  writer,
-		Keys:    make(map[string]any),
-		written: false,
-		aborted: false,
+	ctx := &Context{
+		Req:      r,
+		Res:      writer,
+		Params:   make(map[string]string),
+		writer:   writer,
+		Keys:     make(map[string]any),
+		written:  false,
+		aborted:  false,
+		index:    -1,
+		handlers: nil,
+	}
+
+	// Initialize service scope if engine is provided
+	if engine != nil {
+		ctx.services = NewServiceScope(engine.container, ctx)
+	}
+
+	return ctx
+}
+
+// Reset resets the context for reuse.
+func (c *Context) Reset(w http.ResponseWriter, r *http.Request, engine *Engine) {
+	c.writer.ResponseWriter = w
+	c.writer.status = 200
+	c.writer.size = 0
+	c.Req = r
+	c.Res = c.writer
+	c.Params = make(map[string]string)
+	c.Keys = make(map[string]any)
+	c.written = false
+	c.aborted = false
+	c.error = nil
+	c.index = -1
+	c.handlers = c.handlers[:0]
+
+	// Dispose old service scope before creating new one to prevent memory leaks
+	if c.services != nil {
+		c.services.Dispose()
+	}
+
+	if engine != nil {
+		c.services = NewServiceScope(engine.container, c)
+	} else {
+		c.services = nil
 	}
 }
 
@@ -104,6 +145,29 @@ func (c *Context) BindJSON(v any) error {
 	return validateStruct(v)
 }
 
+// BindValidate is a convenience method that binds and validates in one call.
+// It automatically detects the content type and binds accordingly.
+func (c *Context) BindValidate(v any) error {
+	contentType := c.Header("Content-Type")
+
+	// Handle JSON content type
+	if strings.Contains(contentType, "application/json") {
+		return c.BindJSON(v)
+	}
+
+	// Handle form data
+	if strings.Contains(contentType, "application/x-www-form-urlencoded") ||
+		strings.Contains(contentType, "multipart/form-data") {
+		if err := bindForm(c.Req, v); err != nil {
+			return err
+		}
+		return validateStruct(v)
+	}
+
+	// Default to JSON
+	return c.BindJSON(v)
+}
+
 // Send writes a byte slice to the response.
 func (c *Context) Send(body []byte) error {
 	c.written = true
@@ -132,20 +196,62 @@ func (c *Context) JSON(code int, v any) error {
 	return json.NewEncoder(c.Res).Encode(v)
 }
 
-// BindQuery binds query parameters to a struct.
+// BindQuery binds query parameters to a struct and validates.
 func (c *Context) BindQuery(v any) error {
-	// Simple implementation: iterate over struct fields and get query params
-	// This requires reflection similar to validateStruct, but for setting values
-	// For now, let's just support basic string binding or leave it for a more complex binder
-	// A full binder is complex. Let's stick to the plan but maybe implement a simple version or use a library?
-	// The plan said "Add BindQuery". I should implement it.
-	// Since we want zero dependencies, I have to write it.
-	return bindMap(c.Req.URL.Query(), v, "query")
+	if err := bindMap(c.Req.URL.Query(), v, "query"); err != nil {
+		return err
+	}
+	return validateStruct(v)
 }
 
-// BindHeader binds headers to a struct.
+// BindHeader binds headers to a struct and validates.
 func (c *Context) BindHeader(v any) error {
-	return bindMap(c.Req.Header, v, "header")
+	if err := bindMap(c.Req.Header, v, "header"); err != nil {
+		return err
+	}
+	return validateStruct(v)
+}
+
+// BindPath binds path parameters to a struct and validates.
+func (c *Context) BindPath(v any) error {
+	if err := bindParams(c.Params, v); err != nil {
+		return err
+	}
+	return validateStruct(v)
+}
+
+// BindAll binds from all sources (path, query, header, body) and validates.
+func (c *Context) BindAll(v any) error {
+	// Bind path parameters first
+	if err := bindParams(c.Params, v); err != nil {
+		return err
+	}
+
+	// Bind query parameters
+	if err := bindMap(c.Req.URL.Query(), v, "query"); err != nil {
+		return err
+	}
+
+	// Bind headers
+	if err := bindMap(c.Req.Header, v, "header"); err != nil {
+		return err
+	}
+
+	// Bind body if present
+	contentType := c.Header("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		if err := json.NewDecoder(c.Req.Body).Decode(v); err != nil {
+			return err
+		}
+	} else if strings.Contains(contentType, "application/x-www-form-urlencoded") ||
+		strings.Contains(contentType, "multipart/form-data") {
+		if err := bindForm(c.Req, v); err != nil {
+			return err
+		}
+	}
+
+	// Validate the combined result
+	return validateStruct(v)
 }
 
 // Cookie returns the named cookie.
@@ -191,6 +297,7 @@ func (c *Context) AbortWithError(code int, err error) {
 		httpErr = NewHTTPError(code, err.Error())
 	}
 	handleError(c, httpErr)
+	c.Abort()
 }
 
 // AbortWithStatusJSON aborts the request with a JSON response.
@@ -198,11 +305,13 @@ func (c *Context) AbortWithStatusJSON(code int, data any) {
 	c.aborted = true
 	c.Status(code)
 	_ = c.JSON(code, data)
+	c.Abort()
 }
 
 // Abort aborts the request processing.
 func (c *Context) Abort() {
 	c.aborted = true
+	c.index = int8(len(c.handlers) + 100) // Ensure we skip remaining handlers
 }
 
 // IsAborted returns whether the request has been aborted.
@@ -211,10 +320,12 @@ func (c *Context) IsAborted() bool {
 }
 
 // Next calls the next middleware/handler in the chain.
-// This is useful for fine-grained middleware control.
 func (c *Context) Next() {
-	// This will be implemented when we refactor middleware execution
-	// to use an index-based approach similar to Gin
+	c.index++
+	for c.index < int8(len(c.handlers)) {
+		c.handlers[c.index](c)
+		c.index++
+	}
 }
 
 // GetString returns the value associated with the key as a string.
@@ -253,4 +364,46 @@ func (c *Context) MustGet(key string) any {
 		return val
 	}
 	panic("key \"" + key + "\" does not exist")
+}
+
+// GetService resolves a service from the scoped container.
+func (c *Context) GetService(name string) (any, error) {
+	if c.services == nil {
+		return nil, fmt.Errorf("service scope not initialized")
+	}
+	return c.services.container.Resolve(name, c.services)
+}
+
+// MustGetService resolves a service or panics if not found.
+func (c *Context) MustGetService(name string) any {
+	service, err := c.GetService(name)
+	if err != nil {
+		panic(err)
+	}
+	return service
+}
+
+// GetServiceTyped resolves a service with type safety.
+func GetServiceTyped[T any](c *Context, name string) (T, error) {
+	var zero T
+	instance, err := c.GetService(name)
+	if err != nil {
+		return zero, err
+	}
+
+	service, ok := instance.(T)
+	if !ok {
+		return zero, fmt.Errorf("service '%s' is not of type %T", name, zero)
+	}
+
+	return service, nil
+}
+
+// MustGetServiceTyped is like GetServiceTyped but panics on error.
+func MustGetServiceTyped[T any](c *Context, name string) T {
+	service, err := GetServiceTyped[T](c, name)
+	if err != nil {
+		panic(err)
+	}
+	return service
 }

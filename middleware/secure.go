@@ -79,67 +79,65 @@ func Secure() ginji.Middleware {
 
 // SecureWithConfig returns a middleware that sets security headers with custom configuration.
 func SecureWithConfig(config SecureConfig) ginji.Middleware {
-	return func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			// X-XSS-Protection
-			if config.XSSProtection != "" {
-				c.SetHeader("X-XSS-Protection", config.XSSProtection)
-			}
-
-			// X-Content-Type-Options
-			if config.ContentTypeNosniff != "" {
-				c.SetHeader("X-Content-Type-Options", config.ContentTypeNosniff)
-			}
-
-			// X-Frame-Options
-			if config.XFrameOptions != "" {
-				c.SetHeader("X-Frame-Options", config.XFrameOptions)
-			}
-
-			// Strict-Transport-Security
-			if config.HSTSMaxAge > 0 {
-				hsts := fmt.Sprintf("max-age=%d", config.HSTSMaxAge)
-				if config.HSTSIncludeSubdomains {
-					hsts += "; includeSubDomains"
-				}
-				if config.HSTSPreload {
-					hsts += "; preload"
-				}
-				c.SetHeader("Strict-Transport-Security", hsts)
-			}
-
-			// Content-Security-Policy
-			if config.ContentSecurityPolicy != "" {
-				c.SetHeader("Content-Security-Policy", config.ContentSecurityPolicy)
-			}
-
-			// Referrer-Policy
-			if config.ReferrerPolicy != "" {
-				c.SetHeader("Referrer-Policy", config.ReferrerPolicy)
-			}
-
-			// Permissions-Policy
-			if config.PermissionsPolicy != "" {
-				c.SetHeader("Permissions-Policy", config.PermissionsPolicy)
-			}
-
-			// Cross-Origin-Embedder-Policy
-			if config.CrossOriginEmbedderPolicy != "" {
-				c.SetHeader("Cross-Origin-Embedder-Policy", config.CrossOriginEmbedderPolicy)
-			}
-
-			// Cross-Origin-Opener-Policy
-			if config.CrossOriginOpenerPolicy != "" {
-				c.SetHeader("Cross-Origin-Opener-Policy", config.CrossOriginOpenerPolicy)
-			}
-
-			// Cross-Origin-Resource-Policy
-			if config.CrossOriginResourcePolicy != "" {
-				c.SetHeader("Cross-Origin-Resource-Policy", config.CrossOriginResourcePolicy)
-			}
-
-			next(c)
+	return func(c *ginji.Context) {
+		// X-XSS-Protection
+		if config.XSSProtection != "" {
+			c.SetHeader("X-XSS-Protection", config.XSSProtection)
 		}
+
+		// X-Content-Type-Options
+		if config.ContentTypeNosniff != "" {
+			c.SetHeader("X-Content-Type-Options", config.ContentTypeNosniff)
+		}
+
+		// X-Frame-Options
+		if config.XFrameOptions != "" {
+			c.SetHeader("X-Frame-Options", config.XFrameOptions)
+		}
+
+		// Strict-Transport-Security
+		if config.HSTSMaxAge > 0 {
+			hsts := fmt.Sprintf("max-age=%d", config.HSTSMaxAge)
+			if config.HSTSIncludeSubdomains {
+				hsts += "; includeSubDomains"
+			}
+			if config.HSTSPreload {
+				hsts += "; preload"
+			}
+			c.SetHeader("Strict-Transport-Security", hsts)
+		}
+
+		// Content-Security-Policy
+		if config.ContentSecurityPolicy != "" {
+			c.SetHeader("Content-Security-Policy", config.ContentSecurityPolicy)
+		}
+
+		// Referrer-Policy
+		if config.ReferrerPolicy != "" {
+			c.SetHeader("Referrer-Policy", config.ReferrerPolicy)
+		}
+
+		// Permissions-Policy
+		if config.PermissionsPolicy != "" {
+			c.SetHeader("Permissions-Policy", config.PermissionsPolicy)
+		}
+
+		// Cross-Origin-Embedder-Policy
+		if config.CrossOriginEmbedderPolicy != "" {
+			c.SetHeader("Cross-Origin-Embedder-Policy", config.CrossOriginEmbedderPolicy)
+		}
+
+		// Cross-Origin-Opener-Policy
+		if config.CrossOriginOpenerPolicy != "" {
+			c.SetHeader("Cross-Origin-Opener-Policy", config.CrossOriginOpenerPolicy)
+		}
+
+		// Cross-Origin-Resource-Policy
+		if config.CrossOriginResourcePolicy != "" {
+			c.SetHeader("Cross-Origin-Resource-Policy", config.CrossOriginResourcePolicy)
+		}
+
+		c.Next()
 	}
 }
 

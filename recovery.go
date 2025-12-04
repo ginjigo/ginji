@@ -9,17 +9,15 @@ import (
 
 // Recovery returns a middleware that recovers from any panics and writes a 500 if there was one.
 func Recovery() Middleware {
-	return func(next Handler) Handler {
-		return func(c *Context) {
-			defer func() {
-				if err := recover(); err != nil {
-					message := fmt.Sprintf("%s", err)
-					log.Printf("%s\n\n", trace(message))
-					_ = c.Text(http.StatusInternalServerError, "Internal Server Error")
-				}
-			}()
-			next(c)
-		}
+	return func(c *Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				message := fmt.Sprintf("%s", err)
+				log.Printf("%s\n\n", trace(message))
+				_ = c.Text(http.StatusInternalServerError, "Internal Server Error")
+			}
+		}()
+		c.Next()
 	}
 }
 

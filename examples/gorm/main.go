@@ -33,11 +33,9 @@ func main() {
 	app.Use(ginji.Recovery())
 
 	// Middleware to inject DB into context
-	app.Use(func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			c.Set("db", db)
-			next(c)
-		}
+	app.Use(func(c *ginji.Context) {
+		c.Set("db", db)
+		c.Next()
 	})
 
 	app.Post("/users", func(c *ginji.Context) {

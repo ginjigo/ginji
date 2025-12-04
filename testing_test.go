@@ -2,18 +2,18 @@ package ginji
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 )
 
 func TestNewTestContext(t *testing.T) {
-	c, w := NewTestContext()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	c := NewTestContext(w, req)
 
 	if c == nil {
 		t.Fatal("Expected context to be created")
-	}
-	if w == nil {
-		t.Fatal("Expected response recorder to be created")
 	}
 
 	if c.Req.Method != "GET" {

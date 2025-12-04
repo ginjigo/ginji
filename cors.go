@@ -1,78 +1,125 @@
 package ginji
 
-import "net/http"
+import (
+	"net/http"
+	"strconv"
+	"strings"
+)
 
 // CORSOptions defines the configuration for CORS middleware.
 type CORSOptions struct {
-	AllowOrigins []string
-	AllowMethods []string
-	AllowHeaders []string
+	AllowOrigins     []string
+	AllowMethods     []string
+	AllowHeaders     []string
+	ExposeHeaders    []string // Headers that browsers are allowed to access
+	AllowCredentials bool     // Whether to allow cookies/credentials
+	MaxAge           int      // How long preflight requests can be cached (seconds)
 }
 
 // DefaultCORS returns a default CORS configuration.
 func DefaultCORS() CORSOptions {
 	return CORSOptions{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-		AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{},
+		AllowCredentials: false,
+		MaxAge:           86400, // 24 hours
 	}
 }
 
 // CORS returns a middleware that handles CORS headers.
 func CORS(options CORSOptions) Middleware {
-	return func(next Handler) Handler {
-		return func(c *Context) {
-			origin := c.Req.Header.Get("Origin")
-			allowOrigin := ""
+	// Validate configuration for security issues
+	if options.AllowCredentials && containsWildcard(options.AllowOrigins) {
+		panic("CORS: cannot use credentials with wildcard origin '*'. This is a security vulnerability. Either disable credentials or specify explicit origins.")
+	}
 
-			// Check allowed origins
-			for _, o := range options.AllowOrigins {
-				if o == "*" || o == origin {
-					allowOrigin = o
-					break
-				}
-			}
+	return func(c *Context) {
+		origin := c.Req.Header.Get("Origin")
 
-			if allowOrigin != "" {
-				c.SetHeader("Access-Control-Allow-Origin", allowOrigin)
-			}
-
-			// Set other headers
-			if len(options.AllowMethods) > 0 {
-				c.SetHeader("Access-Control-Allow-Methods", join(options.AllowMethods, ", "))
-			}
-			if len(options.AllowHeaders) > 0 {
-				c.SetHeader("Access-Control-Allow-Headers", join(options.AllowHeaders, ", "))
-			}
-
-			// Handle preflight request
-			if c.Req.Method == "OPTIONS" {
-				c.Status(http.StatusNoContent)
-				return
-			}
-
-			next(c)
+		// If no origin header, skip CORS (not a CORS request)
+		if origin == "" {
+			c.Next()
+			return
 		}
+
+		// Check if origin is allowed
+		if isOriginAllowed(origin, options.AllowOrigins) {
+			// When credentials are enabled, we must return the specific origin, not "*"
+			if options.AllowCredentials {
+				c.SetHeader("Access-Control-Allow-Origin", origin)
+				c.SetHeader("Access-Control-Allow-Credentials", "true")
+			} else if len(options.AllowOrigins) == 1 && options.AllowOrigins[0] == "*" {
+				// Only use wildcard when credentials are not enabled
+				c.SetHeader("Access-Control-Allow-Origin", "*")
+			} else {
+				// Return specific origin
+				c.SetHeader("Access-Control-Allow-Origin", origin)
+			}
+		} else {
+			// Origin not allowed - don't set CORS headers, browser will block
+			// Continue processing but don't set CORS headers
+			c.Next()
+			return
+		}
+
+		// Set allowed methods
+		if len(options.AllowMethods) > 0 {
+			c.SetHeader("Access-Control-Allow-Methods", strings.Join(options.AllowMethods, ", "))
+		}
+
+		// Set allowed headers
+		if len(options.AllowHeaders) > 0 {
+			c.SetHeader("Access-Control-Allow-Headers", strings.Join(options.AllowHeaders, ", "))
+		}
+
+		// Set exposed headers
+		if len(options.ExposeHeaders) > 0 {
+			c.SetHeader("Access-Control-Expose-Headers", strings.Join(options.ExposeHeaders, ", "))
+		}
+
+		// Set max age for preflight caching
+		if options.MaxAge > 0 {
+			c.SetHeader("Access-Control-Max-Age", strconv.Itoa(options.MaxAge))
+		}
+
+		// Handle preflight request
+		if c.Req.Method == "OPTIONS" {
+			c.Status(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
 	}
 }
 
-func join(strs []string, sep string) string {
-	if len(strs) == 0 {
-		return ""
+// isOriginAllowed checks if an origin is allowed, supporting wildcards.
+func isOriginAllowed(origin string, allowedOrigins []string) bool {
+	for _, allowedOrigin := range allowedOrigins {
+		if allowedOrigin == "*" {
+			return true
+		}
+		if allowedOrigin == origin {
+			return true
+		}
+		// Support wildcard patterns like *.example.com
+		if strings.HasPrefix(allowedOrigin, "*.") {
+			domain := allowedOrigin[2:]
+			if strings.HasSuffix(origin, domain) {
+				return true
+			}
+		}
 	}
-	if len(strs) == 1 {
-		return strs[0]
-	}
-	n := len(sep) * (len(strs) - 1)
-	for i := 0; i < len(strs); i++ {
-		n += len(strs[i])
-	}
+	return false
+}
 
-	b := make([]byte, n)
-	bp := copy(b, strs[0])
-	for _, s := range strs[1:] {
-		bp += copy(b[bp:], sep)
-		bp += copy(b[bp:], s)
+// containsWildcard checks if the allowed origins list contains a wildcard.
+func containsWildcard(allowedOrigins []string) bool {
+	for _, origin := range allowedOrigins {
+		if origin == "*" || strings.HasPrefix(origin, "*.") {
+			return true
+		}
 	}
-	return string(b)
+	return false
 }

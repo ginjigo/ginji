@@ -75,28 +75,26 @@ func HealthWithConfig(config HealthCheckConfig) ginji.Middleware {
 		config.Checkers = make(map[string]HealthChecker)
 	}
 
-	return func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			path := c.Req.URL.Path
+	return func(c *ginji.Context) {
+		path := c.Req.URL.Path
 
-			// Liveness probe - just checks if the app is responsive
-			if !config.DisableLiveness && path == config.LivenessPath {
-				status := HealthStatus{
-					Status: "UP",
-					Time:   time.Now().UTC().Format(time.RFC3339),
-				}
-				_ = c.JSON(ginji.StatusOK, status)
-				return
+		// Liveness probe - just checks if the app is responsive
+		if !config.DisableLiveness && path == config.LivenessPath {
+			status := HealthStatus{
+				Status: "UP",
+				Time:   time.Now().UTC().Format(time.RFC3339),
 			}
-
-			// Readiness probe - checks if the app is ready to serve traffic
-			if !config.DisableReadiness && path == config.ReadinessPath {
-				handleReadiness(c, config)
-				return
-			}
-
-			next(c)
+			_ = c.JSON(ginji.StatusOK, status)
+			return
 		}
+
+		// Readiness probe - checks if the app is ready to serve traffic
+		if !config.DisableReadiness && path == config.ReadinessPath {
+			handleReadiness(c, config)
+			return
+		}
+
+		c.Next()
 	}
 }
 

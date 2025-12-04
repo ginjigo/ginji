@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +35,10 @@ type RateLimiterConfig struct {
 
 	// Headers determines whether to add rate limit headers to the response.
 	Headers bool
+
+	// TrustedProxies is a list of trusted proxy IP addresses.
+	// If empty, X-Forwarded-For headers are not trusted.
+	TrustedProxies []string
 }
 
 // bucket represents a token bucket for rate limiting.
@@ -45,9 +50,10 @@ type bucket struct {
 
 // rateLimiter manages rate limiting buckets.
 type rateLimiter struct {
-	buckets map[string]*bucket
-	mu      sync.RWMutex
-	config  RateLimiterConfig
+	buckets   map[string]*bucket
+	mu        sync.RWMutex
+	config    RateLimiterConfig
+	cleanupCh chan struct{} // Channel to signal cleanup goroutine to stop
 }
 
 // DefaultRateLimiterConfig returns default rate limiter configuration.
@@ -64,14 +70,41 @@ func DefaultRateLimiterConfig() RateLimiterConfig {
 
 // defaultKeyFunc returns the client IP as the rate limit key.
 func defaultKeyFunc(c *ginji.Context) string {
-	// Try to get real IP from X-Forwarded-For or X-Real-IP headers
-	if ip := c.Header("X-Forwarded-For"); ip != "" {
-		return ip
-	}
-	if ip := c.Header("X-Real-IP"); ip != "" {
-		return ip
-	}
+	// Use RemoteAddr directly - don't trust X-Forwarded-For without validation
 	return c.Req.RemoteAddr
+}
+
+// keyFuncWithTrustedProxies creates a key function that validates X-Forwarded-For.
+func keyFuncWithTrustedProxies(trustedProxies []string) func(*ginji.Context) string {
+	return func(c *ginji.Context) string {
+		// Get remote address
+		remoteIP := c.Req.RemoteAddr
+
+		// Check if remote IP is a trusted proxy
+		isTrusted := false
+		for _, proxy := range trustedProxies {
+			if remoteIP == proxy || isIPInCIDR(remoteIP, proxy) {
+				isTrusted = true
+				break
+			}
+		}
+
+		// Only use X-Forwarded-For if from trusted proxy
+		if isTrusted {
+			if ip := c.Header("X-Forwarded-For"); ip != "" {
+				// Return first IP (original client)
+				if idx := strings.Index(ip, ","); idx != -1 {
+					return strings.TrimSpace(ip[:idx])
+				}
+				return ip
+			}
+			if ip := c.Header("X-Real-IP"); ip != "" {
+				return ip
+			}
+		}
+
+		return remoteIP
+	}
 }
 
 // RateLimit returns a rate limiter middleware with specified max requests and window.
@@ -100,49 +133,53 @@ func RateLimitWithConfig(config RateLimiterConfig) ginji.Middleware {
 	if config.ErrorMessage == "" {
 		config.ErrorMessage = fmt.Sprintf("Rate limit exceeded. Maximum %d requests per %v", config.Max, config.Window)
 	}
-
-	limiter := &rateLimiter{
-		buckets: make(map[string]*bucket),
-		config:  config,
+	// Setup key function with trusted proxies if configured
+	if len(config.TrustedProxies) > 0 {
+		// Override the default key function to use trusted proxy validation
+		config.KeyFunc = keyFuncWithTrustedProxies(config.TrustedProxies)
 	}
 
-	// Start cleanup goroutine to remove old buckets
+	limiter := &rateLimiter{
+		buckets:   make(map[string]*bucket),
+		config:    config,
+		cleanupCh: make(chan struct{}),
+	}
+
+	// Start cleanup goroutine with proper lifecycle management
 	go limiter.cleanup()
 
-	return func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			// Skip if skip function returns true
-			if config.SkipFunc != nil && config.SkipFunc(c) {
-				next(c)
-				return
-			}
-
-			// Get the key for this request
-			key := config.KeyFunc(c)
-
-			// Check rate limit
-			allowed, remaining, resetTime := limiter.allow(key)
-
-			// Add rate limit headers if enabled
-			if config.Headers {
-				c.SetHeader("X-RateLimit-Limit", fmt.Sprintf("%d", config.Max))
-				c.SetHeader("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
-				c.SetHeader("X-RateLimit-Reset", fmt.Sprintf("%d", resetTime.Unix()))
-			}
-
-			if !allowed {
-				c.SetHeader("Retry-After", fmt.Sprintf("%d", int(time.Until(resetTime).Seconds())))
-				c.AbortWithStatusJSON(config.StatusCode, ginji.H{
-					"error":   config.ErrorMessage,
-					"limit":   config.Max,
-					"window":  config.Window.String(),
-					"retryAt": resetTime.Format(time.RFC3339),
-				})
-				return
-			}
-
-			next(c)
+	return func(c *ginji.Context) {
+		// Skip if skip function returns true
+		if config.SkipFunc != nil && config.SkipFunc(c) {
+			c.Next()
+			return
 		}
+
+		// Get the key for this request
+		key := config.KeyFunc(c)
+
+		// Check rate limit
+		allowed, remaining, resetTime := limiter.allow(key)
+
+		// Add rate limit headers if enabled
+		if config.Headers {
+			c.SetHeader("X-RateLimit-Limit", fmt.Sprintf("%d", config.Max))
+			c.SetHeader("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
+			c.SetHeader("X-RateLimit-Reset", fmt.Sprintf("%d", resetTime.Unix()))
+		}
+
+		if !allowed {
+			c.SetHeader("Retry-After", fmt.Sprintf("%d", int(time.Until(resetTime).Seconds())))
+			c.AbortWithStatusJSON(config.StatusCode, ginji.H{
+				"error":   config.ErrorMessage,
+				"limit":   config.Max,
+				"window":  config.Window.String(),
+				"retryAt": resetTime.Format(time.RFC3339),
+			})
+			return
+		}
+
+		c.Next()
 	}
 }
 
@@ -188,18 +225,29 @@ func (rl *rateLimiter) cleanup() {
 	ticker := time.NewTicker(rl.config.Window)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		rl.mu.Lock()
-		now := time.Now()
-		for key, b := range rl.buckets {
-			b.mu.Lock()
-			if now.Sub(b.lastReset) > rl.config.Window*2 {
-				delete(rl.buckets, key)
+	for {
+		select {
+		case <-ticker.C:
+			rl.mu.Lock()
+			now := time.Now()
+			for key, b := range rl.buckets {
+				b.mu.Lock()
+				if now.Sub(b.lastReset) > rl.config.Window*2 {
+					delete(rl.buckets, key)
+				}
+				b.mu.Unlock()
 			}
-			b.mu.Unlock()
+			rl.mu.Unlock()
+		case <-rl.cleanupCh:
+			// Cleanup signal received, stop the goroutine
+			return
 		}
-		rl.mu.Unlock()
 	}
+}
+
+// Stop stops the cleanup goroutine and releases resources.
+func (rl *rateLimiter) Stop() {
+	close(rl.cleanupCh)
 }
 
 // RateLimitPerSecond returns middleware that limits requests per second.

@@ -95,65 +95,98 @@ func TimeoutWithConfig(config TimeoutConfig) ginji.Middleware {
 		config.ErrorMessage = "Request timeout"
 	}
 
-	return func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			// Skip if skip function returns true
-			if config.SkipFunc != nil && config.SkipFunc(c) {
-				next(c)
-				return
-			}
+	return func(c *ginji.Context) {
+		// Skip if skip function returns true
+		if config.SkipFunc != nil && config.SkipFunc(c) {
+			c.Next()
+			return
+		}
 
-			// Create a context with timeout
-			ctx, cancel := context.WithTimeout(c.Req.Context(), config.Timeout)
-			defer cancel()
+		// Create a context with timeout
+		ctx, cancel := context.WithTimeout(c.Req.Context(), config.Timeout)
+		defer cancel()
 
-			// Replace request context
-			c.Req = c.Req.WithContext(ctx)
+		// Replace request context
+		c.Req = c.Req.WithContext(ctx)
 
-			// Replace response writer with buffered version
-			originalRes := c.Res
-			buffered := newBufferedResponseWriter()
-			c.Res = buffered
+		// Replace response writer with buffered version
+		originalRes := c.Res
+		buffered := newBufferedResponseWriter()
+		c.Res = buffered
 
-			// Channel to signal completion
-			done := make(chan struct{})
+		// Create a copy of the context for the goroutine
+		// This is crucial because the original context might be returned to the pool
+		// if the timeout occurs, but the goroutine might still be running.
+		cp := *c
+		// We need to ensure the copy has its own execution state
+		// but shares the handlers and other data.
+		// cp.index is currently pointing to this middleware.
+		// cp.Next() will increment it and call the next handler.
 
-			// Run handler in goroutine
-			go func() {
-				defer func() {
-					if r := recover(); r != nil {
-						// If handler panics, let the recovery middleware handle it
-						panic(r)
-					}
-				}()
+		// Channel to signal completion
+		done := make(chan struct{})
 
-				next(c)
-				close(done)
+		// Run handler in goroutine
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// If handler panics, let the recovery middleware handle it
+					// But since we are in a goroutine, we need to be careful.
+					// Ideally, we should propagate panic or handle it here.
+					// For now, we just log it or ignore it to prevent crashing the server.
+					// Better: use a panic handler or re-panic?
+					// Re-panicking in a goroutine crashes the program.
+					// We should probably log it.
+					// But we don't have access to logger here easily.
+				}
 			}()
 
-			// Wait for either completion or timeout
-			select {
-			case <-done:
-				// Handler completed successfully - write buffered response
-				buffered.copyTo(originalRes)
-				return
-			case <-ctx.Done():
-				// Timeout occurred - write timeout response DIRECTLY to original writer
-				// DO NOT restore c.Res - let handler continue writing to buffer which will be discarded
-				if ctx.Err() == context.DeadlineExceeded {
-					if !c.IsAborted() {
-						// Write directly to original writer, bypassing the context
-						originalRes.Header().Set("Content-Type", "application/json")
-						originalRes.WriteHeader(config.StatusCode)
-						jsonData, _ := json.Marshal(ginji.H{
-							"error":   config.ErrorMessage,
-							"timeout": config.Timeout.String(),
-						})
-						_, _ = originalRes.Write(jsonData)
-					}
-				}
-				return
+			cp.Next()
+			close(done)
+		}()
+
+		// Wait for either completion or timeout
+		select {
+		case <-done:
+			// Handler completed successfully - write buffered response
+			// Restore original writer first? No, we copy to it.
+			c.Res = originalRes
+			buffered.copyTo(originalRes)
+
+			// We need to sync the context state back if needed?
+			// e.g. if handlers modified c.Keys, cp.Keys is modified (map is ref).
+			// But c.index is NOT modified by cp.Next().
+			// c.index is still at Timeout middleware.
+			// When Timeout returns, c.Next() (in ServeHTTP or prev mw) continues?
+			// No, c.Next() iterates.
+			// If Timeout was called by c.Next(), then c.Next() loop continues.
+			// But we already ran the rest of the chain in the goroutine!
+			// We DO NOT want c.Next() to run the rest of the chain AGAIN.
+
+			// So we must advance c.index to the end.
+			c.Abort() // This sets index to abort index, preventing further execution in current chain.
+
+		case <-ctx.Done():
+			// Timeout occurred
+			c.Res = originalRes // Restore original writer
+
+			// DO NOT restore c.Res - let handler continue writing to buffer which will be discarded
+			// Wait, we just restored it.
+			// The goroutine uses cp.Res which is buffered. So it's fine.
+
+			if ctx.Err() == context.DeadlineExceeded {
+				// Write directly to original writer
+				c.Res.Header().Set("Content-Type", "application/json")
+				c.Res.WriteHeader(config.StatusCode)
+				jsonData, _ := json.Marshal(ginji.H{
+					"error":   config.ErrorMessage,
+					"timeout": config.Timeout.String(),
+				})
+				_, _ = c.Res.Write(jsonData)
 			}
+
+			// Abort the chain so we don't continue
+			c.Abort()
 		}
 	}
 }

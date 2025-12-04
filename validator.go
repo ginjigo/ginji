@@ -13,7 +13,7 @@ import (
 type ValidatorFunc func(value reflect.Value, param string) error
 
 var (
-	emailRegex    = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$`)
+	emailRegex    = regexp.MustCompile(`(?i)^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$`)
 	alphaRegex    = regexp.MustCompile(`^[a-zA-Z]+$`)
 	numericRegex  = regexp.MustCompile(`^[0-9]+$`)
 	alphanumRegex = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
@@ -203,7 +203,7 @@ func validateBuiltInRule(fieldPath string, value reflect.Value, key, param strin
 
 	case "email":
 		if value.Kind() == reflect.String {
-			if !emailRegex.MatchString(strings.ToLower(value.String())) {
+			if !emailRegex.MatchString(value.String()) {
 				return &ValidationError{
 					Field:   fieldPath,
 					Message: "must be a valid email",

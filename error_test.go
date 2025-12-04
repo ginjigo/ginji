@@ -97,7 +97,7 @@ func TestDefaultErrorHandler(t *testing.T) {
 func TestContextAbortWithError(t *testing.T) {
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
-	c := NewContext(w, req)
+	c := NewContext(w, req, nil)
 
 	c.AbortWithError(http.StatusUnauthorized, errors.New("not authorized"))
 
@@ -113,7 +113,7 @@ func TestContextAbortWithError(t *testing.T) {
 func TestContextAbortWithStatusJSON(t *testing.T) {
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
-	c := NewContext(w, req)
+	c := NewContext(w, req, nil)
 
 	c.AbortWithStatusJSON(http.StatusForbidden, H{"message": "forbidden"})
 
@@ -127,7 +127,7 @@ func TestContextAbortWithStatusJSON(t *testing.T) {
 }
 
 func TestContextTypedGetters(t *testing.T) {
-	c := NewContext(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
+	c := NewContext(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil), nil)
 
 	c.Set("name", "John")
 	c.Set("age", 30)
@@ -160,7 +160,7 @@ func TestContextTypedGetters(t *testing.T) {
 }
 
 func TestContextMustGet(t *testing.T) {
-	c := NewContext(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
+	c := NewContext(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil), nil)
 
 	c.Set("key", "value")
 	val := c.MustGet("key")

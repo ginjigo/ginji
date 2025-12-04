@@ -1,12 +1,15 @@
 package ginji
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"log" // Added log import
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Stream sends a streaming response from an io.Reader.
@@ -25,11 +28,20 @@ func (c *Context) Stream(contentType string, reader io.Reader) error {
 
 // File sends a file with proper headers.
 func (c *Context) File(filepath string) error {
+	// Validate file path to prevent directory traversal
+	if err := validateFilePath(filepath); err != nil {
+		return err
+	}
+
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = file.Close() }()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Failed to close file: %v", err)
+		}
+	}()
 
 	// Get file info
 	stat, err := file.Stat()
@@ -53,17 +65,28 @@ func (c *Context) Attachment(filepath, filename string) error {
 		filename = filepath
 	}
 
-	c.SetHeader("Content-Disposition", `attachment; filename="`+filename+`"`)
+	// Sanitize filename to prevent header injection
+	filename = sanitizeFilename(filename)
+	c.SetHeader("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	return c.File(filepath)
 }
 
 // FileStream streams a file without buffering the entire content.
 func (c *Context) FileStream(filepath string) error {
+	// Validate file path to prevent directory traversal
+	if err := validateFilePath(filepath); err != nil {
+		return err
+	}
+
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = file.Close() }()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("Failed to close file: %v", err)
+		}
+	}()
 
 	contentType := detectContentType(filepath)
 	return c.Stream(contentType, file)
@@ -108,18 +131,37 @@ func detectContentType(filename string) string {
 
 // SaveUploadedFile saves an uploaded file to dst.
 func (c *Context) SaveUploadedFile(fileHeader *multipart.FileHeader, dst string) error {
+	// Validate destination path to prevent directory traversal
+	if err := validateFilePath(dst); err != nil {
+		return err
+	}
+
+	// Check file size (default 32MB limit)
+	const maxUploadSize = 32 << 20 // 32 MB
+	if fileHeader.Size > maxUploadSize {
+		return fmt.Errorf("file too large: %d bytes (max %d bytes)", fileHeader.Size, maxUploadSize)
+	}
+
 	src, err := fileHeader.Open()
 	if err != nil {
 		return err
 	}
-	defer func() { _ = src.Close() }()
+	defer func() {
+		if err := src.Close(); err != nil {
+			log.Printf("Failed to close source file: %v", err)
+		}
+	}()
 
 	// Create destination file
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = out.Close() }()
+	defer func() {
+		if err := out.Close(); err != nil {
+			log.Printf("Failed to close output file: %v", err)
+		}
+	}()
 
 	// Copy content
 	_, err = io.Copy(out, src)
@@ -180,4 +222,41 @@ func (c *Context) StreamJSON(items <-chan any) error {
 	}
 
 	return nil
+}
+
+// validateFilePath checks if a file path is safe and doesn't contain directory traversal attempts.
+func validateFilePath(path string) error {
+	// Clean the path
+	cleanPath := filepath.Clean(path)
+
+	// Check for directory traversal patterns
+	if strings.Contains(cleanPath, "..") {
+		return errors.New("invalid file path: directory traversal detected")
+	}
+
+	// Ensure it's not an absolute path (unless explicitly allowed)
+	// This prevents accessing arbitrary system files
+	if filepath.IsAbs(cleanPath) {
+		return errors.New("invalid file path: absolute paths not allowed")
+	}
+
+	return nil
+}
+
+// sanitizeFilename removes potentially dangerous characters from filenames
+// to prevent header injection and other attacks.
+func sanitizeFilename(filename string) string {
+	// Get just the base filename (no path components)
+	filename = filepath.Base(filename)
+
+	// Remove or replace dangerous characters
+	// Replace quotes, newlines, carriage returns that could break headers
+	replacer := strings.NewReplacer(
+		"\"", "",
+		"\r", "",
+		"\n", "",
+		"\\", "",
+	)
+
+	return replacer.Replace(filename)
 }

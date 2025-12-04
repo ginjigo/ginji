@@ -54,31 +54,29 @@ func BodyLimitWithConfig(config BodyLimitConfig) ginji.Middleware {
 		config.ErrorMessage = fmt.Sprintf("Request body too large. Maximum allowed size is %d bytes", config.MaxBytes)
 	}
 
-	return func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			// Check Content-Length header first (if present)
-			if c.Req.ContentLength > config.MaxBytes {
-				c.AbortWithStatusJSON(config.StatusCode, ginji.H{
-					"error":    config.ErrorMessage,
-					"maxBytes": config.MaxBytes,
-					"received": c.Req.ContentLength,
-				})
-				return
-			}
-
-			// Wrap the request body with a limited reader
-			if c.Req.Body != nil {
-				c.Req.Body = &limitedReadCloser{
-					ReadCloser: c.Req.Body,
-					limit:      config.MaxBytes,
-					read:       0,
-					config:     &config,
-					context:    c,
-				}
-			}
-
-			next(c)
+	return func(c *ginji.Context) {
+		// Check Content-Length header first (if present)
+		if c.Req.ContentLength > config.MaxBytes {
+			c.AbortWithStatusJSON(config.StatusCode, ginji.H{
+				"error":    config.ErrorMessage,
+				"maxBytes": config.MaxBytes,
+				"received": c.Req.ContentLength,
+			})
+			return
 		}
+
+		// Wrap the request body with a limited reader
+		if c.Req.Body != nil {
+			c.Req.Body = &limitedReadCloser{
+				ReadCloser: c.Req.Body,
+				limit:      config.MaxBytes,
+				read:       0,
+				config:     &config,
+				context:    c,
+			}
+		}
+
+		c.Next()
 	}
 }
 

@@ -19,14 +19,19 @@ func TestContext(w http.ResponseWriter, r *http.Request) *Context {
 	if r == nil {
 		r = httptest.NewRequest("GET", "/", nil)
 	}
-	return NewContext(w, r)
+	return NewContext(w, r, nil)
 }
 
-// NewTestContext creates a new test context with default values.
-func NewTestContext() (*Context, *httptest.ResponseRecorder) {
+// NewTestContext creates a new test context.
+func NewTestContext(w http.ResponseWriter, r *http.Request) *Context {
+	return NewContext(w, r, nil)
+}
+
+// NewTestContextWithRecorder creates a new test context with a response recorder.
+func NewTestContextWithRecorder(method, path string) (*Context, *httptest.ResponseRecorder) {
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/", nil)
-	return NewContext(w, r), w
+	r := httptest.NewRequest(method, path, nil)
+	return NewContext(w, r, nil), w
 }
 
 // PerformRequest simulates a request to the engine and returns the response recorder.
@@ -185,11 +190,9 @@ func NewResponse(w *httptest.ResponseRecorder) *Response {
 
 // MockMiddleware creates a simple mock middleware for testing.
 func MockMiddleware(key string, value any) Middleware {
-	return func(next Handler) Handler {
-		return func(c *Context) {
-			c.Set(key, value)
-			next(c)
-		}
+	return func(c *Context) {
+		c.Set(key, value)
+		c.Next()
 	}
 }
 

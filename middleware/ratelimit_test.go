@@ -230,8 +230,6 @@ func TestRateLimitByUser(t *testing.T) {
 
 	// Simulate user context
 	req1 := ginji.NewRequest(app, "GET", "/test")
-	c1, _ := ginji.NewTestContext()
-	c1.Set("user_id", "user1")
 
 	// First 2 requests should succeed
 	for i := 0; i < 2; i++ {

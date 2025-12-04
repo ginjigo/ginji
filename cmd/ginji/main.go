@@ -363,14 +363,110 @@ var deployOptions = []string{"None", "Docker"}
 var testOptions = []string{"Yes", "No"}
 
 func main() {
-	initialName := ""
-	if len(os.Args) > 2 && os.Args[1] == "new" {
-		initialName = os.Args[2]
-	}
-
-	p := tea.NewProgram(initialModel(initialName))
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
+	if len(os.Args) < 2 {
+		printUsage()
 		os.Exit(1)
 	}
+
+	command := os.Args[1]
+
+	switch command {
+	case "new":
+		initialName := ""
+		if len(os.Args) > 2 {
+			initialName = os.Args[2]
+		}
+		p := tea.NewProgram(initialModel(initialName))
+		if _, err := p.Run(); err != nil {
+			fmt.Printf("Alas, there's been an error: %v", err)
+			os.Exit(1)
+		}
+
+	case "generate", "g":
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: ginji generate [handler|middleware|crud] <name>")
+			os.Exit(1)
+		}
+
+		subCommand := os.Args[2]
+
+		switch subCommand {
+		case "handler", "h":
+			if len(os.Args) < 4 {
+				fmt.Println("Usage: ginji generate handler <name> [--json]")
+				os.Exit(1)
+			}
+			name := os.Args[3]
+			useJSON := len(os.Args) > 4 && os.Args[4] == "--json"
+
+			if err := generateHandler(name, useJSON); err != nil {
+				fmt.Printf("Error generating handler: %v\n", err)
+				os.Exit(1)
+			}
+
+		case "middleware", "mw":
+			if len(os.Args) < 4 {
+				fmt.Println("Usage: ginji generate middleware <name>")
+				os.Exit(1)
+			}
+			name := os.Args[3]
+
+			if err := generateMiddleware(name); err != nil {
+				fmt.Printf("Error generating middleware: %v\n", err)
+				os.Exit(1)
+			}
+
+		case "crud":
+			if len(os.Args) < 4 {
+				fmt.Println("Usage: ginji generate crud <resource>")
+				os.Exit(1)
+			}
+			resource := os.Args[3]
+
+			if err := generateCRUD(resource); err != nil {
+				fmt.Printf("Error generating CRUD: %v\n", err)
+				os.Exit(1)
+			}
+
+		default:
+			fmt.Printf("Unknown generate command: %s\n", subCommand)
+			fmt.Println("Available: handler, middleware, crud")
+			os.Exit(1)
+		}
+
+	case "help", "--help", "-h":
+		printUsage()
+
+	default:
+		fmt.Printf("Unknown command: %s\n", command)
+		printUsage()
+		os.Exit(1)
+	}
+}
+
+func printUsage() {
+	fmt.Println(`Ginji CLI - Ultra-fast Go API framework
+
+Usage:
+  ginji new <project-name>              Create a new Ginji project
+  ginji generate <type> <name>          Generate code
+  
+Generate Commands:
+  ginji generate handler <name>         Generate a handler
+  ginji generate handler <name> --json  Generate a handler with JSON binding
+  ginji generate middleware <name>      Generate middleware
+  ginji generate crud <resource>        Generate full CRUD handlers
+  
+Aliases:
+  g, generate                           Code generation
+  h, handler                            Handler generation
+  mw, middleware                        Middleware generation
+  
+Examples:
+  ginji new my-api
+  ginji g handler GetUser --json
+  ginji g middleware Auth
+  ginji g crud User
+
+For more information, visit: https://github.com/ginjigo/ginji`)
 }

@@ -88,55 +88,53 @@ func BasicAuthWithConfig(config BasicAuthConfig) ginji.Middleware {
 		config.ContextKey = "user"
 	}
 
-	return func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			auth := c.Header("Authorization")
+	return func(c *ginji.Context) {
+		auth := c.Header("Authorization")
 
-			if auth == "" {
-				unauthorized(c, config.Realm)
-				return
-			}
-
-			// Parse Basic Auth header
-			const prefix = "Basic "
-			if !strings.HasPrefix(auth, prefix) {
-				unauthorized(c, config.Realm)
-				return
-			}
-
-			decoded, err := base64.StdEncoding.DecodeString(auth[len(prefix):])
-			if err != nil {
-				unauthorized(c, config.Realm)
-				return
-			}
-
-			credentials := string(decoded)
-			parts := strings.SplitN(credentials, ":", 2)
-			if len(parts) != 2 {
-				unauthorized(c, config.Realm)
-				return
-			}
-
-			username, password := parts[0], parts[1]
-
-			// Validate credentials
-			var valid bool
-			if config.Validator != nil {
-				valid = config.Validator(username, password)
-			} else if config.Users != nil {
-				expectedPassword, exists := config.Users[username]
-				valid = exists && subtle.ConstantTimeCompare([]byte(password), []byte(expectedPassword)) == 1
-			}
-
-			if !valid {
-				unauthorized(c, config.Realm)
-				return
-			}
-
-			// Store username in context
-			c.Set(config.ContextKey, username)
-			next(c)
+		if auth == "" {
+			unauthorized(c, config.Realm)
+			return
 		}
+
+		// Parse Basic Auth header
+		const prefix = "Basic "
+		if !strings.HasPrefix(auth, prefix) {
+			unauthorized(c, config.Realm)
+			return
+		}
+
+		decoded, err := base64.StdEncoding.DecodeString(auth[len(prefix):])
+		if err != nil {
+			unauthorized(c, config.Realm)
+			return
+		}
+
+		credentials := string(decoded)
+		parts := strings.SplitN(credentials, ":", 2)
+		if len(parts) != 2 {
+			unauthorized(c, config.Realm)
+			return
+		}
+
+		username, password := parts[0], parts[1]
+
+		// Validate credentials
+		var valid bool
+		if config.Validator != nil {
+			valid = config.Validator(username, password)
+		} else if config.Users != nil {
+			expectedPassword, exists := config.Users[username]
+			valid = exists && subtle.ConstantTimeCompare([]byte(password), []byte(expectedPassword)) == 1
+		}
+
+		if !valid {
+			unauthorized(c, config.Realm)
+			return
+		}
+
+		// Store username in context
+		c.Set(config.ContextKey, username)
+		c.Next()
 	}
 }
 
@@ -158,39 +156,37 @@ func BearerAuthWithConfig(config BearerAuthConfig) ginji.Middleware {
 		config.Realm = "Authorization Required"
 	}
 
-	return func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			auth := c.Header("Authorization")
+	return func(c *ginji.Context) {
+		auth := c.Header("Authorization")
 
-			if auth == "" {
-				unauthorizedBearer(c, config.Realm)
-				return
-			}
-
-			// Parse Bearer token
-			const prefix = "Bearer "
-			if !strings.HasPrefix(auth, prefix) {
-				unauthorizedBearer(c, config.Realm)
-				return
-			}
-
-			token := auth[len(prefix):]
-			if token == "" {
-				unauthorizedBearer(c, config.Realm)
-				return
-			}
-
-			// Validate token
-			user, valid := config.Validator(token)
-			if !valid {
-				unauthorizedBearer(c, config.Realm)
-				return
-			}
-
-			// Store user in context
-			c.Set(config.ContextKey, user)
-			next(c)
+		if auth == "" {
+			unauthorizedBearer(c, config.Realm)
+			return
 		}
+
+		// Parse Bearer token
+		const prefix = "Bearer "
+		if !strings.HasPrefix(auth, prefix) {
+			unauthorizedBearer(c, config.Realm)
+			return
+		}
+
+		token := auth[len(prefix):]
+		if token == "" {
+			unauthorizedBearer(c, config.Realm)
+			return
+		}
+
+		// Validate token
+		user, valid := config.Validator(token)
+		if !valid {
+			unauthorizedBearer(c, config.Realm)
+			return
+		}
+
+		// Store user in context
+		c.Set(config.ContextKey, user)
+		c.Next()
 	}
 }
 
@@ -209,40 +205,38 @@ func APIKeyWithConfig(config APIKeyConfig) ginji.Middleware {
 		config.ContextKey = "user"
 	}
 
-	return func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			var apiKey string
+	return func(c *ginji.Context) {
+		var apiKey string
 
-			// Try header first
-			if config.Header != "" {
-				apiKey = c.Header(config.Header)
-			}
-
-			// Fall back to query parameter
-			if apiKey == "" && config.Query != "" {
-				apiKey = c.Query(config.Query)
-			}
-
-			if apiKey == "" {
-				c.AbortWithStatusJSON(ginji.StatusUnauthorized, ginji.H{
-					"error": "API key required",
-				})
-				return
-			}
-
-			// Validate API key
-			user, valid := config.Validator(apiKey)
-			if !valid {
-				c.AbortWithStatusJSON(ginji.StatusUnauthorized, ginji.H{
-					"error": "Invalid API key",
-				})
-				return
-			}
-
-			// Store user in context
-			c.Set(config.ContextKey, user)
-			next(c)
+		// Try header first
+		if config.Header != "" {
+			apiKey = c.Header(config.Header)
 		}
+
+		// Fall back to query parameter
+		if apiKey == "" && config.Query != "" {
+			apiKey = c.Query(config.Query)
+		}
+
+		if apiKey == "" {
+			c.AbortWithStatusJSON(ginji.StatusUnauthorized, ginji.H{
+				"error": "API key required",
+			})
+			return
+		}
+
+		// Validate API key
+		user, valid := config.Validator(apiKey)
+		if !valid {
+			c.AbortWithStatusJSON(ginji.StatusUnauthorized, ginji.H{
+				"error": "Invalid API key",
+			})
+			return
+		}
+
+		// Store user in context
+		c.Set(config.ContextKey, user)
+		c.Next()
 	}
 }
 
@@ -265,43 +259,41 @@ func unauthorizedBearer(c *ginji.Context, realm string) {
 // RequireRole returns middleware that checks if user has a specific role.
 // Expects user to be a map[string]any with a "role" or "roles" field.
 func RequireRole(role string) ginji.Middleware {
-	return func(next ginji.Handler) ginji.Handler {
-		return func(c *ginji.Context) {
-			user, exists := c.Get("user")
-			if !exists {
-				c.AbortWithStatusJSON(ginji.StatusForbidden, ginji.H{
-					"error": "Access denied",
-				})
-				return
+	return func(c *ginji.Context) {
+		user, exists := c.Get("user")
+		if !exists {
+			c.AbortWithStatusJSON(ginji.StatusForbidden, ginji.H{
+				"error": "Access denied",
+			})
+			return
+		}
+
+		// Check if user has the required role
+		hasRole := false
+		if userMap, ok := user.(map[string]any); ok {
+			// Check single role field
+			if userRole, ok := userMap["role"].(string); ok && userRole == role {
+				hasRole = true
 			}
 
-			// Check if user has the required role
-			hasRole := false
-			if userMap, ok := user.(map[string]any); ok {
-				// Check single role field
-				if userRole, ok := userMap["role"].(string); ok && userRole == role {
-					hasRole = true
-				}
-
-				// Check roles array
-				if roles, ok := userMap["roles"].([]string); ok {
-					for _, r := range roles {
-						if r == role {
-							hasRole = true
-							break
-						}
+			// Check roles array
+			if roles, ok := userMap["roles"].([]string); ok {
+				for _, r := range roles {
+					if r == role {
+						hasRole = true
+						break
 					}
 				}
 			}
-
-			if !hasRole {
-				c.AbortWithStatusJSON(ginji.StatusForbidden, ginji.H{
-					"error": "Insufficient permissions",
-				})
-				return
-			}
-
-			next(c)
 		}
+
+		if !hasRole {
+			c.AbortWithStatusJSON(ginji.StatusForbidden, ginji.H{
+				"error": "Insufficient permissions",
+			})
+			return
+		}
+
+		c.Next()
 	}
 }
