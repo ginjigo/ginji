@@ -10,6 +10,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/ginjigo/ginji)](https://goreportcard.com/report/github.com/ginjigo/ginji)
 [![License](https://img.shields.io/github/license/ginjigo/ginji)](https://github.com/ginjigo/ginji/blob/main/LICENSE)
 [![GoDoc](https://pkg.go.dev/badge/github.com/ginjigo/ginji.svg)](https://pkg.go.dev/github.com/ginjigo/ginji)
+[![codecov](https://codecov.io/gh/ginjigo/ginji/branch/main/graph/badge.svg?token=02U3P542Y2)](https://codecov.io/gh/ginjigo/ginji)
 
 Ginji is a brand-new, ultra-fast, zero-dependency API framework for Go, inspired by Hono, Fiber, and Gin. It aims to provide a minimal, fast, and clean foundation for building web applications.
 
