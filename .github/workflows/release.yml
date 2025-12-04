@@ -2,8 +2,11 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    paths:
+      - 'cmd/ginji/**'
+      - '!docs/**'
+      - '!examples/**'
+      
 
 permissions:
   contents: write
