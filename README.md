@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://ginji.io">
-    <img src="https://raw.githubusercontent.com/ginjigo/ginji/main/assets/logo-text.png" width="500" height="auto" alt="Ginji"/>
+    <img src="https://raw.githubusercontent.com/ginjigo/ginji/main/assets/text-logo.png" width="500" height="auto" alt="Ginji"/>
   </a>
 </div>
 
