@@ -1,12 +1,23 @@
 package ginji
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 )
 
 // H is a shortcut for map[string]any
 type H map[string]any
+
+// jsonMarshal is a helper for marshaling JSON
+func jsonMarshal(v any) ([]byte, error) {
+	return json.Marshal(v)
+}
+
+// jsonUnmarshal is a helper for unmarshaling JSON
+func jsonUnmarshal(data []byte, v any) error {
+	return json.Unmarshal(data, v)
+}
 
 // bindMap binds a map of strings to a struct based on a tag.
 func bindMap(data map[string][]string, v any, tagName string) error {

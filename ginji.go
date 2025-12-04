@@ -5,6 +5,21 @@ import (
 	"strings"
 )
 
+// Mode represents the application mode.
+type Mode string
+
+const (
+	// DebugMode indicates development/debug mode.
+	DebugMode Mode = "debug"
+	// ReleaseMode indicates production/release mode.
+	ReleaseMode Mode = "release"
+	// TestMode indicates test mode.
+	TestMode Mode = "test"
+)
+
+// mode is the current application mode.
+var mode = DebugMode
+
 // Engine is the main instance of the Ginji framework.
 type Engine struct {
 	*RouterGroup
@@ -120,4 +135,14 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	h := applyMiddleware(finalHandler, middlewares...)
 	h(c)
+}
+
+// SetMode sets the application mode (debug, release, test).
+func SetMode(m Mode) {
+	mode = m
+}
+
+// GetMode returns the current application mode.
+func GetMode() Mode {
+	return mode
 }

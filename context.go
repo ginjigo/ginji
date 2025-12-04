@@ -29,22 +29,27 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 
 // Context wraps the HTTP request and response writer.
 type Context struct {
-	Req    *http.Request
-	Res    http.ResponseWriter
-	Params map[string]string
-	writer *responseWriter
-	Keys   map[string]any
+	Req     *http.Request
+	Res     http.ResponseWriter
+	Params  map[string]string
+	writer  *responseWriter
+	Keys    map[string]any
+	error   error // error to be handled by error middleware
+	written bool  // whether response has been written
+	aborted bool  // whether request processing should stop
 }
 
 // NewContext creates a new Context instance.
 func NewContext(w http.ResponseWriter, r *http.Request) *Context {
 	writer := &responseWriter{ResponseWriter: w, status: 200}
 	return &Context{
-		Req:    r,
-		Res:    writer,
-		Params: make(map[string]string),
-		writer: writer,
-		Keys:   make(map[string]any),
+		Req:     r,
+		Res:     writer,
+		Params:  make(map[string]string),
+		writer:  writer,
+		Keys:    make(map[string]any),
+		written: false,
+		aborted: false,
 	}
 }
 
@@ -101,6 +106,7 @@ func (c *Context) BindJSON(v any) error {
 
 // Send writes a byte slice to the response.
 func (c *Context) Send(body []byte) error {
+	c.written = true
 	_, err := c.Res.Write(body)
 	return err
 }
@@ -167,4 +173,84 @@ func (c *Context) FormValue(key string) string {
 func (c *Context) FormFile(key string) (*multipart.FileHeader, error) {
 	_, fileHeader, err := c.Req.FormFile(key)
 	return fileHeader, err
+}
+
+// Error sets an error and marks the context for error handling.
+func (c *Context) Error(err error) *Context {
+	c.error = err
+	return c
+}
+
+// AbortWithError aborts the request with an error.
+func (c *Context) AbortWithError(code int, err error) {
+	c.aborted = true
+	var httpErr *HTTPError
+	if he, ok := err.(*HTTPError); ok {
+		httpErr = he
+	} else {
+		httpErr = NewHTTPError(code, err.Error())
+	}
+	handleError(c, httpErr)
+}
+
+// AbortWithStatusJSON aborts the request with a JSON response.
+func (c *Context) AbortWithStatusJSON(code int, data any) {
+	c.aborted = true
+	c.Status(code)
+	_ = c.JSON(code, data)
+}
+
+// Abort aborts the request processing.
+func (c *Context) Abort() {
+	c.aborted = true
+}
+
+// IsAborted returns whether the request has been aborted.
+func (c *Context) IsAborted() bool {
+	return c.aborted
+}
+
+// Next calls the next middleware/handler in the chain.
+// This is useful for fine-grained middleware control.
+func (c *Context) Next() {
+	// This will be implemented when we refactor middleware execution
+	// to use an index-based approach similar to Gin
+}
+
+// GetString returns the value associated with the key as a string.
+func (c *Context) GetString(key string) string {
+	if val, ok := c.Keys[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
+}
+
+// GetInt returns the value associated with the key as an int.
+func (c *Context) GetInt(key string) int {
+	if val, ok := c.Keys[key]; ok {
+		if i, ok := val.(int); ok {
+			return i
+		}
+	}
+	return 0
+}
+
+// GetBool returns the value associated with the key as a bool.
+func (c *Context) GetBool(key string) bool {
+	if val, ok := c.Keys[key]; ok {
+		if b, ok := val.(bool); ok {
+			return b
+		}
+	}
+	return false
+}
+
+// MustGet returns the value for the given key or panics if not found.
+func (c *Context) MustGet(key string) any {
+	if val, exists := c.Get(key); exists {
+		return val
+	}
+	panic("key \"" + key + "\" does not exist")
 }
