@@ -104,7 +104,7 @@ func (u *WebSocketUpgrader) Upgrade(c *Context) (*WebSocketConn, error) {
 	// Perform WebSocket handshake
 	key := c.Header("Sec-WebSocket-Key")
 	if key == "" {
-		conn.Close()
+		_ = conn.Close()
 		return nil, errors.New("missing Sec-WebSocket-Key")
 	}
 
@@ -116,12 +116,12 @@ func (u *WebSocketUpgrader) Upgrade(c *Context) (*WebSocketConn, error) {
 		"Sec-WebSocket-Accept: " + acceptKey + "\r\n\r\n"
 
 	if _, err := bufrw.Write([]byte(response)); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 
 	if err := bufrw.Flush(); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 

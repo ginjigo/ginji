@@ -29,7 +29,7 @@ func (c *Context) File(filepath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Get file info
 	stat, err := file.Stat()
@@ -63,7 +63,7 @@ func (c *Context) FileStream(filepath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	contentType := detectContentType(filepath)
 	return c.Stream(contentType, file)
@@ -112,14 +112,14 @@ func (c *Context) SaveUploadedFile(fileHeader *multipart.FileHeader, dst string)
 	if err != nil {
 		return err
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	// Create destination file
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	// Copy content
 	_, err = io.Copy(out, src)
@@ -150,7 +150,7 @@ func (c *Context) StreamJSON(items <-chan any) error {
 	c.SetHeader("Transfer-Encoding", "chunked")
 
 	// Start array
-	c.Res.Write([]byte("["))
+	_, _ = c.Res.Write([]byte("["))
 	if flusher, ok := c.Res.(http.Flusher); ok {
 		flusher.Flush()
 	}
@@ -158,7 +158,7 @@ func (c *Context) StreamJSON(items <-chan any) error {
 	first := true
 	for item := range items {
 		if !first {
-			c.Res.Write([]byte(","))
+			_, _ = c.Res.Write([]byte(","))
 		}
 		first = false
 
@@ -167,7 +167,7 @@ func (c *Context) StreamJSON(items <-chan any) error {
 			return err
 		}
 
-		c.Res.Write(data)
+		_, _ = c.Res.Write(data)
 		if flusher, ok := c.Res.(http.Flusher); ok {
 			flusher.Flush()
 		}

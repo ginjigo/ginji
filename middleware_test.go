@@ -45,7 +45,7 @@ func TestCompress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer gr.Close()
+	defer func() { _ = gr.Close() }()
 
 	body, _ := io.ReadAll(gr)
 	if string(body) != "compressed content" {

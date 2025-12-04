@@ -57,5 +57,7 @@ func main() {
 	}
 
 	fmt.Println("Server is running on :3000")
-	app.Run(":3000")
+	if err := app.Run(":3000"); err != nil {
+		fmt.Printf("Server error: %v\n", err)
+	}
 }

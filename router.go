@@ -103,16 +103,9 @@ func parsePattern(pattern string) []string {
 			// However, for request paths, we MUST NOT break.
 			// For route definitions, if user puts * in middle, it's their choice.
 			if item[0] == '*' {
-				// Check if it's a wildcard parameter (length > 1) or just a literal "*"
-				// If it's just "*", it might be a valid part of a URL (though rare/discouraged)
-				// If it's "*filepath", it's a wildcard param.
-				// But wait, if I remove this break, then /files/*filepath/extra will be parsed as ["files", "*filepath", "extra"]
-				// And inserted into trie.
-				// But search stops at *filepath. So extra is unreachable. This is fine.
-
-				// The original code broke on ANY item starting with *.
-				// This breaks requests like /files/*/info.
-				// So we remove the break.
+				// Wildcard parameters (*filepath) should not break parsing,
+				// allowing full path to be captured and additional parts to be parsed.
+				// This enables flexible routing patterns.
 			}
 		}
 	}

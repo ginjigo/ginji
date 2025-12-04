@@ -94,7 +94,10 @@ func TestRequestBuilderJSON(t *testing.T) {
 	app := New()
 	app.Post("/data", func(c *Context) {
 		var data H
-		c.BindJSON(&data)
+		if err := c.BindJSON(&data); err != nil {
+			_ = c.JSON(StatusBadRequest, H{"error": err.Error()})
+			return
+		}
 		_ = c.JSON(StatusOK, data)
 	})
 

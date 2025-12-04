@@ -17,7 +17,6 @@ var (
 	alphaRegex    = regexp.MustCompile(`^[a-zA-Z]+$`)
 	numericRegex  = regexp.MustCompile(`^[0-9]+$`)
 	alphanumRegex = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
-	urlRegex      = regexp.MustCompile(`^https?://[^\s/$.?#].[^\s]*$`)
 
 	// customValidators stores user-registered custom validators.
 	customValidators = make(map[string]ValidatorFunc)

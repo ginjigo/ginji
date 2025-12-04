@@ -40,5 +40,7 @@ func main() {
 	})
 
 	fmt.Println("Server running on :8081")
-	app.Listen(":8081")
+	if err := app.Listen(":8081"); err != nil {
+		fmt.Printf("Server error: %v\n", err)
+	}
 }

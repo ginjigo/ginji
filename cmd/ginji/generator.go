@@ -55,7 +55,7 @@ func downloadAndExtractTemplate(destDir string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("bad status: %s", resp.Status)
@@ -108,13 +108,13 @@ func downloadAndExtractTemplate(destDir string) error {
 
 			rc, err := file.Open()
 			if err != nil {
-				outFile.Close()
+				_ = outFile.Close()
 				return err
 			}
 
 			_, err = io.Copy(outFile, rc)
-			outFile.Close()
-			rc.Close()
+			_ = outFile.Close()
+			_ = rc.Close()
 			if err != nil {
 				return err
 			}

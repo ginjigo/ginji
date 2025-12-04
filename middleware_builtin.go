@@ -50,7 +50,7 @@ func Compress() Middleware {
 
 			w := c.Res
 			gz := gzip.NewWriter(w)
-			defer gz.Close()
+			defer func() { _ = gz.Close() }()
 
 			// Wrap the response writer
 			gzw := &gzipResponseWriter{Writer: gz, ResponseWriter: w}

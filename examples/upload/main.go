@@ -39,7 +39,7 @@ func main() {
 			_ = c.Text(ginji.StatusInternalServerError, err.Error())
 			return
 		}
-		defer src.Close()
+		defer func() { _ = src.Close() }()
 
 		// Save to disk
 		dst, err := os.Create(file.Filename)
@@ -47,7 +47,7 @@ func main() {
 			_ = c.Text(ginji.StatusInternalServerError, err.Error())
 			return
 		}
-		defer dst.Close()
+		defer func() { _ = dst.Close() }()
 
 		if _, err = io.Copy(dst, src); err != nil {
 			_ = c.Text(ginji.StatusInternalServerError, err.Error())
@@ -58,5 +58,7 @@ func main() {
 	})
 
 	fmt.Println("Server running on :8084")
-	app.Listen(":8084")
+	if err := app.Listen(":8084"); err != nil {
+		fmt.Printf("Server error: %v\n", err)
+	}
 }

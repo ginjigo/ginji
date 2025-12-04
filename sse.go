@@ -129,7 +129,7 @@ func (s *SSEStream) StartKeepAlive() {
 			select {
 			case <-ticker.C:
 				// Send keep-alive comment
-				s.ctx.Res.Write([]byte(": keep-alive\n\n"))
+				_, _ = s.ctx.Res.Write([]byte(": keep-alive\n\n"))
 				if flusher, ok := s.ctx.Res.(http.Flusher); ok {
 					flusher.Flush()
 				}

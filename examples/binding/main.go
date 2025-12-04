@@ -39,5 +39,7 @@ func main() {
 	})
 
 	fmt.Println("Server running on :8082")
-	app.Listen(":8082")
+	if err := app.Listen(":8082"); err != nil {
+		fmt.Printf("Server error: %v\n", err)
+	}
 }

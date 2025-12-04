@@ -24,7 +24,9 @@ func main() {
 	}
 
 	// Migrate the schema
-	db.AutoMigrate(&User{})
+	if err := db.AutoMigrate(&User{}); err != nil {
+		fmt.Printf("Failed to migrate database: %v\n", err)
+	}
 
 	app := ginji.New()
 	app.Use(ginji.Logger())
@@ -75,5 +77,7 @@ func main() {
 	})
 
 	fmt.Println("Server is running on :3000")
-	app.Run(":3000")
+	if err := app.Run(":3000"); err != nil {
+		fmt.Printf("Server error: %v\n", err)
+	}
 }
