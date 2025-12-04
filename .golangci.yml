@@ -1,6 +1,8 @@
-version: v2
+version: "2"
 run:
   timeout: 5m
 issues:
   exclude-dirs:
     - templates
+    - docs
+    
