@@ -1,0 +1,8 @@
+/* .vitepress/theme/my-fonts.css */
+:root {
+    --vp-home-hero-name-color: transparent;
+    --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #e0421f, #ef711db2);
+    --vp-c-brand-1: #e0421f;
+    --vp-c-brand-2: #ef711d;
+    --vp-c-brand-3: #ef711d;
+}

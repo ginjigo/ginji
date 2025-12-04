@@ -6,6 +6,9 @@ hero:
   name: "Ginji"
   text: "Go Framework for Modern Web Services"
   tagline: High-performance, zero-dependency Go framework with real-time capabilities
+  image:
+    src: /logo.svg
+    alt: Ginji
   actions:
     - theme: brand
       text: Get Started

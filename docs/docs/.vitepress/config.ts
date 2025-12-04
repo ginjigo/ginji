@@ -8,6 +8,8 @@ export default defineConfig({
     hostname: 'https://ginji.io'
   },
   themeConfig: {
+    siteTitle: 'Ginji',
+    logo: '/logo.svg',
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/getting-started' },
@@ -69,8 +71,8 @@ export default defineConfig({
     ],
 
     footer: {
-      message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2024-present Ginji'
+      message: 'Released under the <a href="https://github.com/ginjigo/ginji/blob/main/LICENSE">MIT License</a>.',
+      copyright: 'Copyright © 2025-present <a href="https://github.com/kalanakt">Kalana Kt</a>'
     },
 
     search: {
