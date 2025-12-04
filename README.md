@@ -1,6 +1,7 @@
 <div align="center">
-  <h1>Ginji</h1>
-  <p><strong>Ultra-fast, zero-dependency API framework for Go</strong></p>
+  <a href="https://ginji.io">
+    <img src="https://raw.githubusercontent.com/ginjigo/ginji/main/assets/logo-text.png" width="500" height="auto" alt="Ginji"/>
+  </a>
 </div>
 
 <hr />
