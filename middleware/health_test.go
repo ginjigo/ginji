@@ -162,9 +162,8 @@ func TestHealthDisableEndpoints(t *testing.T) {
 	// Test that endpoints are disabled
 	w := ginji.PerformRequest(app, "GET", "/health/live", nil)
 	// When disabled, endpoint should reach fallback handler (not found)
-	if w.Code == ginji.StatusOK && w.Body.String() == "not found" {
-		// Expected behavior - endpoint is disabled and fallback is reached
-	}
+	// Expected behavior - endpoint is disabled and fallback is reached
+	_ = w
 }
 
 func TestHealthTimeout(t *testing.T) {

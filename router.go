@@ -98,15 +98,6 @@ func parsePattern(pattern string) []string {
 	for _, item := range vs {
 		if item != "" {
 			parts = append(parts, item)
-			// Only break on wildcard if it's the start of a route definition part like *filepath
-			// But we can't distinguish here easily.
-			// However, for request paths, we MUST NOT break.
-			// For route definitions, if user puts * in middle, it's their choice.
-			if item[0] == '*' {
-				// Wildcard parameters (*filepath) should not break parsing,
-				// allowing full path to be captured and additional parts to be parsed.
-				// This enables flexible routing patterns.
-			}
 		}
 	}
 	return parts

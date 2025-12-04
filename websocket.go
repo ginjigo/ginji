@@ -242,7 +242,7 @@ func (c *Context) WebSocket(handler func(*WebSocketConn)) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	handler(conn)
 	return nil
@@ -280,7 +280,7 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			if _, ok := h.connections[conn]; ok {
 				delete(h.connections, conn)
-				conn.Close()
+				_ = conn.Close()
 			}
 			h.mu.Unlock()
 

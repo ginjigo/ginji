@@ -31,6 +31,7 @@ func main() {
 		_ = c.Text(ginji.StatusOK, "User: "+cookie.Value)
 	})
 
-	fmt.Println("Server running on :8083")
-	app.Listen(":8083")
+	if err := app.Run(":8083"); err != nil {
+		fmt.Printf("Server error: %v\n", err)
+	}
 }

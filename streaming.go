@@ -174,7 +174,7 @@ func (c *Context) StreamJSON(items <-chan any) error {
 	}
 
 	// End array
-	c.Res.Write([]byte("]"))
+	_, _ = c.Res.Write([]byte("]"))
 	if flusher, ok := c.Res.(http.Flusher); ok {
 		flusher.Flush()
 	}
