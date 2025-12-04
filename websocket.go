@@ -20,6 +20,10 @@ const (
 	PongMessage   = 10
 )
 
+// maxWebSocketPayloadSize limits the maximum payload size for WebSocket messages sent by WriteMessage, in bytes.
+// 64 MiB is a typical upper bound, safe for most environments (adjust as appropriate for your application).
+const maxWebSocketPayloadSize = 64 * 1024 * 1024
+
 // WebSocketConn represents a WebSocket connection.
 type WebSocketConn struct {
 	conn      net.Conn
@@ -134,6 +138,10 @@ func (ws *WebSocketConn) WriteMessage(messageType int, data []byte) error {
 
 	if ws.closed {
 		return errors.New("websocket: connection closed")
+	}
+
+	if len(data) > maxWebSocketPayloadSize {
+		return errors.New("websocket: payload too large")
 	}
 
 	// Simple frame format (for basic implementation)
