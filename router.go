@@ -138,6 +138,9 @@ func parsePattern(pattern string) []string {
 
 // addRoute adds a route to the router.
 func (r *Router) addRoute(method string, pattern string, handler Handler) {
+	if pattern == "" {
+		pattern = "/"
+	}
 	parts := parsePattern(pattern)
 	key := method + "-" + pattern
 	_, ok := r.roots[method]
@@ -171,6 +174,19 @@ func (r *Router) getRoute(method string, path string) (*node, map[string]string)
 				break
 			}
 		}
+		// Strict trailing slash check
+		// If the pattern ends with / (and is not root), the request path must also end with /
+		// If the pattern does not end with /, the request path must not end with /
+		// Exception: Root path "/" matches "/"
+		// Exception: Catch-all wildcard (*) matches everything including trailing slash
+		if n.pattern != "/" && !strings.HasPrefix(n.part, "*") {
+			patternEndsWithSlash := strings.HasSuffix(n.pattern, "/")
+			pathEndsWithSlash := strings.HasSuffix(path, "/")
+			if patternEndsWithSlash != pathEndsWithSlash {
+				return nil, nil
+			}
+		}
+
 		return n, params
 	}
 

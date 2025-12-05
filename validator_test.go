@@ -9,8 +9,8 @@ import (
 
 func TestValidateRequired(t *testing.T) {
 	type User struct {
-		Name string `ginji:"required"`
-		Age  int    `ginji:"required"`
+		Name string `validate:"required"`
+		Age  int    `validate:"required"`
 	}
 
 	// Valid
@@ -29,7 +29,7 @@ func TestValidateRequired(t *testing.T) {
 
 func TestValidateEmail(t *testing.T) {
 	type Contact struct {
-		Email string `ginji:"required,email"`
+		Email string `validate:"required,email"`
 	}
 
 	// Valid
@@ -48,7 +48,7 @@ func TestValidateEmail(t *testing.T) {
 
 func TestValidateURL(t *testing.T) {
 	type Website struct {
-		URL string `ginji:"url"`
+		URL string `validate:"url"`
 	}
 
 	// Valid
@@ -67,7 +67,7 @@ func TestValidateURL(t *testing.T) {
 
 func TestValidateAlpha(t *testing.T) {
 	type Name struct {
-		FirstName string `ginji:"alpha"`
+		FirstName string `validate:"alpha"`
 	}
 
 	valid := Name{FirstName: "John"}
@@ -84,7 +84,7 @@ func TestValidateAlpha(t *testing.T) {
 
 func TestValidateNumeric(t *testing.T) {
 	type Code struct {
-		ZipCode string `ginji:"numeric"`
+		ZipCode string `validate:"numeric"`
 	}
 
 	valid := Code{ZipCode: "12345"}
@@ -101,7 +101,7 @@ func TestValidateNumeric(t *testing.T) {
 
 func TestValidateAlphanum(t *testing.T) {
 	type Username struct {
-		Name string `ginji:"alphanum"`
+		Name string `validate:"alphanum"`
 	}
 
 	valid := Username{Name: "user123"}
@@ -118,9 +118,9 @@ func TestValidateAlphanum(t *testing.T) {
 
 func TestValidateMinMax(t *testing.T) {
 	type Product struct {
-		Name  string   `ginji:"min=3,max=50"`
-		Price int      `ginji:"min=1,max=1000"`
-		Tags  []string `ginji:"min=1,max=5"`
+		Name  string   `validate:"min=3,max=50"`
+		Price int      `validate:"min=1,max=1000"`
+		Tags  []string `validate:"min=1,max=5"`
 	}
 
 	// Valid
@@ -150,7 +150,7 @@ func TestValidateMinMax(t *testing.T) {
 
 func TestValidateLen(t *testing.T) {
 	type Code struct {
-		PostalCode string `ginji:"len=5"`
+		PostalCode string `validate:"len=5"`
 	}
 
 	valid := Code{PostalCode: "12345"}
@@ -166,10 +166,10 @@ func TestValidateLen(t *testing.T) {
 
 func TestValidateGtGteLtLte(t *testing.T) {
 	type Numbers struct {
-		Greater      int `ginji:"gt=10"`
-		GreaterEqual int `ginji:"gte=10"`
-		Lesser       int `ginji:"lt=100"`
-		LesserEqual  int `ginji:"lte=100"`
+		Greater      int `validate:"gt=10"`
+		GreaterEqual int `validate:"gte=10"`
+		Lesser       int `validate:"lt=100"`
+		LesserEqual  int `validate:"lte=100"`
 	}
 
 	// Valid
@@ -193,7 +193,7 @@ func TestValidateGtGteLtLte(t *testing.T) {
 
 func TestValidateOneOf(t *testing.T) {
 	type Status struct {
-		State string `ginji:"oneof=active inactive pending"`
+		State string `validate:"oneof=active inactive pending"`
 	}
 
 	// Valid
@@ -211,7 +211,7 @@ func TestValidateOneOf(t *testing.T) {
 
 func TestValidateRegex(t *testing.T) {
 	type Phone struct {
-		Number string `ginji:"regex=^\\d{3}-\\d{3}-\\d{4}$"`
+		Number string `validate:"regex=^\\d{3}-\\d{3}-\\d{4}$"`
 	}
 
 	// Valid
@@ -229,14 +229,14 @@ func TestValidateRegex(t *testing.T) {
 
 func TestValidateNestedStruct(t *testing.T) {
 	type Address struct {
-		Street string `ginji:"required,min=5"`
-		City   string `ginji:"required"`
-		Zip    string `ginji:"required,numeric,len=5"`
+		Street string `validate:"required,min=5"`
+		City   string `validate:"required"`
+		Zip    string `validate:"required,numeric,len=5"`
 	}
 
 	type User struct {
-		Name    string  `ginji:"required"`
-		Address Address `ginji:"required"`
+		Name    string  `validate:"required"`
+		Address Address `validate:"required"`
 	}
 
 	// Valid
@@ -276,11 +276,11 @@ func TestValidateNestedStruct(t *testing.T) {
 
 func TestValidateSlice(t *testing.T) {
 	type Item struct {
-		Name string `ginji:"required,min=2"`
+		Name string `validate:"required,min=2"`
 	}
 
 	type Cart struct {
-		Items []Item `ginji:"min=1"`
+		Items []Item `validate:"min=1"`
 	}
 
 	// Valid
@@ -326,7 +326,7 @@ func TestCustomValidator(t *testing.T) {
 	})
 
 	type Numbers struct {
-		EvenNumber int `ginji:"even"`
+		EvenNumber int `validate:"even"`
 	}
 
 	// Valid
@@ -347,9 +347,9 @@ func TestCustomValidator(t *testing.T) {
 
 func TestValidationErrorsCollection(t *testing.T) {
 	type Form struct {
-		Email string `ginji:"required,email"`
-		Age   int    `ginji:"required,min=18"`
-		Name  string `ginji:"required,min=2"`
+		Email string `validate:"required,email"`
+		Age   int    `validate:"required,min=18"`
+		Name  string `validate:"required,min=2"`
 	}
 
 	invalid := Form{
@@ -395,7 +395,7 @@ func TestValidateMap(t *testing.T) {
 
 func TestCircularReferenceProtection(t *testing.T) {
 	type Node struct {
-		Value string `ginji:"required"`
+		Value string `validate:"required"`
 		Next  *Node
 	}
 

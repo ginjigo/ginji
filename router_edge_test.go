@@ -105,7 +105,7 @@ func TestRouterCatchAllWildcard(t *testing.T) {
 	}{
 		{"/files/a.txt", "filepath: a.txt"},
 		{"/files/dir/subdir/file.txt", "filepath: dir/subdir/file.txt"},
-		{"/files/", "filepath: "},
+		{"/files/", "filepath:"},
 	}
 
 	for _, tt := range tests {

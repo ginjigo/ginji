@@ -72,7 +72,7 @@ func validateStructFields(val reflect.Value, parentPath string, visited map[uint
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		value := val.Field(i)
-		tag := field.Tag.Get("ginji")
+		tag := field.Tag.Get("validate")
 
 		// Build field path
 		fieldPath := field.Name
@@ -191,6 +191,14 @@ func validateFieldTags(fieldPath string, value reflect.Value, tag string) Valida
 
 // validateBuiltInRule validates a single built-in rule.
 func validateBuiltInRule(fieldPath string, value reflect.Value, key, param string) *ValidationError {
+	// Handle pointers for non-required rules
+	if key != "required" && value.Kind() == reflect.Ptr {
+		if value.IsNil() {
+			return nil
+		}
+		value = value.Elem()
+	}
+
 	switch key {
 	case "required":
 		if isEmptyValue(value) {
@@ -215,10 +223,11 @@ func validateBuiltInRule(fieldPath string, value reflect.Value, key, param strin
 
 	case "url":
 		if value.Kind() == reflect.String {
-			if _, err := url.ParseRequestURI(value.String()); err != nil {
+			u, err := url.ParseRequestURI(value.String())
+			if err != nil || u.Scheme == "" || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 				return &ValidationError{
 					Field:   fieldPath,
-					Message: "must be a valid URL",
+					Message: "must be a valid URL (http or https)",
 					Tag:     "url",
 					Value:   value.String(),
 				}

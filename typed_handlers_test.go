@@ -106,8 +106,8 @@ func TestTypedHandlerValidation(t *testing.T) {
 
 	// Define a struct with ginji validation tags
 	type ValidatedRequest struct {
-		Email string `json:"email" ginji:"email"`
-		Age   int    `json:"age" ginji:"max=150"`
+		Email string `json:"email" validate:"email"`
+		Age   int    `json:"age" validate:"max=150"`
 	}
 
 	app.Typed().Post("/users", func(c *Context, req ValidatedRequest) (CreateUserResponse, error) {
