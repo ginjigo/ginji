@@ -261,7 +261,7 @@ func TestDIFactoryWithDependencies(t *testing.T) {
 	container := NewContainer()
 
 	// Register dependency
-	err := container.RegisterSingleton("config", func() string {
+	err := container.RegisterSingleton("string", func() string {
 		return "production"
 	})
 	if err != nil {

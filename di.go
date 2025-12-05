@@ -25,6 +25,7 @@ type ServiceDescriptor struct {
 	Factory  any // Factory function
 	Instance any // For singleton instances
 	Type     reflect.Type
+	mu       sync.Mutex // Mutex for singleton instantiation
 }
 
 // Container is the main DI container.
@@ -96,6 +97,10 @@ func (c *Container) RegisterScoped(name string, factory any) error {
 
 // RegisterInstance registers a pre-created instance as a singleton.
 func (c *Container) RegisterInstance(name string, instance any) error {
+	if instance == nil {
+		return fmt.Errorf("instance cannot be nil")
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -159,8 +164,8 @@ func (c *Container) resolveSingleton(descriptor *ServiceDescriptor) (any, error)
 	}
 
 	// Create instance
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	descriptor.mu.Lock()
+	defer descriptor.mu.Unlock()
 
 	// Double-check after acquiring lock
 	if descriptor.Instance != nil {
