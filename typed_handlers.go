@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"sync"
 )
 
 // TypedHandler is a generic handler with typed request and response.
@@ -13,38 +12,6 @@ type TypedHandler[Req any, Res any] func(*Context, Req) (Res, error)
 
 // EmptyRequest is used when a handler doesn't need a request body.
 type EmptyRequest struct{}
-
-// typeCache caches reflected types to avoid repeated reflection.
-var typeCache = struct {
-	sync.RWMutex
-	types map[string]reflect.Type
-}{
-	types: make(map[string]reflect.Type),
-}
-
-// getCachedType returns a cached type or computes and caches it.
-func getCachedType(key string, compute func() reflect.Type) reflect.Type {
-	// Try read lock first for performance
-	typeCache.RLock()
-	if t, ok := typeCache.types[key]; ok {
-		typeCache.RUnlock()
-		return t
-	}
-	typeCache.RUnlock()
-
-	// Compute and cache with write lock
-	typeCache.Lock()
-	defer typeCache.Unlock()
-
-	// Double-check after acquiring write lock
-	if t, ok := typeCache.types[key]; ok {
-		return t
-	}
-
-	t := compute()
-	typeCache.types[key] = t
-	return t
-}
 
 // TypedHandlerFunc wraps a typed handler for use with standard routing.
 // It automatically handles request binding, validation, and response marshaling.

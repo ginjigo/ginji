@@ -267,7 +267,9 @@ func TestTypedHandlerFunc(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	c := NewContext(rec, req, nil)
-	handler(c)
+	if err := handler(c); err != nil {
+		t.Fatalf("Handler returned error: %v", err)
+	}
 
 	if rec.Code != StatusOK {
 		t.Errorf("Expected status %d, got %d", StatusOK, rec.Code)

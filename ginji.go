@@ -461,7 +461,7 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	engine.router.handle(c, engine)
 
 	// Execute the chain
-	c.Next()
+	_ = c.Next()
 
 	// Return to pool
 	engine.pool.Put(c)
