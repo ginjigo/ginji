@@ -1,0 +1,4 @@
+.vscode
+test.db
+docs/.vitepress/dist
+docs/.vitepress/cache
